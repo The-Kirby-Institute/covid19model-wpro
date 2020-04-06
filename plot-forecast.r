@@ -22,7 +22,7 @@ make_forecast_plot <- function(){
   
   load(paste0("results/", filename))
   
-  data_interventions <- read.csv("data/interventions.csv", 
+  data_interventions <- read.csv("data_wpro/interventions.csv", 
                                  stringsAsFactors = FALSE)
   
   for(i in 1:11){

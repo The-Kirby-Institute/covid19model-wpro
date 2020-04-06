@@ -19,10 +19,10 @@ make_three_pannel_plot <- function(){
   
   args <- commandArgs(trailingOnly = TRUE)
   
-  filename2 <- args[1]
+  filename2 <- "base-806691.Rdata" #args[1]
   load(paste0("results/", filename2))
   print(sprintf("loading: %s",paste0("results/",filename2)))
-  data_interventions <- read.csv("data/interventions.csv", 
+  data_interventions <- read.csv("data_wpro/interventions.csv", 
                                  stringsAsFactors = FALSE)
   covariates <- data_interventions[1:11, c(1,2,3,4,5,6, 7, 8)]
   
@@ -217,7 +217,7 @@ make_plots <- function(data_country, covariates_country_long,
     theme(legend.position="right")
   
   p <- plot_grid(p1, p2, p3, ncol = 3, rel_widths = c(1, 1, 2))
-  save_plot(filename = paste0("figures/", country, "_three_pannel_", filename2, ".pdf"), 
+  save_plot(filename = paste0("figures/", country, "_three_panel_", filename2, ".pdf"), 
             p, base_width = 14)
 }
 
