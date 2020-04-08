@@ -15,21 +15,24 @@ library(cowplot)
 
 source("utils/geom-stepribbon.r")
 #---------------------------------------------------------------------------
-make_three_pannel_plot <- function(){
+make_three_panel_plot <- function(resultsFile){
   
-  args <- commandArgs(trailingOnly = TRUE)
+  # args <- commandArgs(trailingOnly = TRUE)
   
-  filename2 <- "base-806691.Rdata" #args[1]
+  filename2 <- resultsFile #args[1] 
   load(paste0("results/", filename2))
   print(sprintf("loading: %s",paste0("results/",filename2)))
   data_interventions <- read.csv("data_wpro/interventions.csv", 
                                  stringsAsFactors = FALSE)
   covariates <- data_interventions[1:11, c(1,2,3,4,5,6, 7, 8)]
   
-  for(i in 1:11){
+  results <- vector(mode = "list", length = length(countries))
+  
+  for(i in 1:length(countries)){
     print(i)
     N <- length(dates[[i]])
     country <- countries[[i]]
+    print(country)
     
     predicted_cases <- colMeans(prediction[,1:N,i])
     predicted_cases_li <- colQuantiles(prediction[,1:N,i], probs=.025)
@@ -109,7 +112,12 @@ make_three_pannel_plot <- function(){
                filename2 = filename2,
                country = country)
     
+    results[[i]] <- data_country
+    
   }
+  
+  return(results)
+  
 }
 
 #---------------------------------------------------------------------------
@@ -161,6 +169,8 @@ make_plots <- function(data_country, covariates_country_long,
     geom_ribbon(
       data = data_deaths,
       aes(ymin = death_min, ymax = death_max, fill = key)) +
+    xlab("") +
+    ylab("Daily number of deaths") +
     scale_x_date(date_breaks = "weeks", labels = date_format("%e %b")) +
     scale_fill_manual(name = "", labels = c("50%", "95%"),
                       values = c(alpha("deepskyblue4", 0.55), 
@@ -222,7 +232,7 @@ make_plots <- function(data_country, covariates_country_long,
 }
 
 #-----------------------------------------------------------------------------------------------
-#filename <- "base-joint-1236305.pbs.Rdata"
-# make_three_pannel_plot(filename)
+# filename <- "base-993627.Rdata"
+# output <- make_three_panel_plot()
 
-make_three_pannel_plot()
+# output <- make_three_panel_plot()
