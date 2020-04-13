@@ -2,7 +2,15 @@ library(rstan)
 library(data.table)
 library(lubridate)
 library(gdata)
-library(EnvStats)
+library(EnvStats) # For gammaAlt functions
+
+## Code addapted to handle Western Pacific countries for WHO Regional 
+## Office (WPRO). Additional comments added to translate methods from 
+## Imperial report:
+## * Seth Flaxman, Swapnil Mishra, Axel Gandy et al. Estimating the number 
+## of infections and the impact of nonpharmaceutical interventions on COVID-19 in 11 
+## European countries. Imperial College London (30-03-2020)
+## doi: https://doi.org/10.25561/77731.
 
 countries <- c(
   "Philippines",
@@ -25,7 +33,11 @@ d=readRDS('data_wpro/COVID-19-up-to-date.rds')
 ifr.by.country = read.csv("data_wpro/weighted_fatality.csv")
 ifr.by.country$country = as.character(ifr.by.country[,1])
 
-serial.interval = read.csv("data_wpro/serial_interval.csv")
+serial.interval = read.csv("data_wpro/serial_interval.csv") 
+# Not sure why we serial interval instead of just specifying mean and cv below??
+# dgammaAlt(100, 6.5, cv = 0.62)
+
+# Start sorting out NPIs which are given by dates of start.
 covariates = read.csv('data_wpro/interventions.csv', stringsAsFactors = FALSE)
 covariates <- covariates[1:11, c(1,2,3,4,5,6, 7, 8)]
 
@@ -52,10 +64,12 @@ if(DEBUG == FALSE) {
 
 dates = list()
 reported_cases = list()
-stan_data = list(M=length(countries),N=NULL,p=p,x1=poly(1:N2,2)[,1],x2=poly(1:N2,2)[,2],
-                 y=NULL,covariate1=NULL,covariate2=NULL,covariate3=NULL,covariate4=NULL,covariate5=NULL,covariate6=NULL,covariate7=NULL,deaths=NULL,f=NULL,
-                 N0=6,cases=NULL,LENGTHSCALE=7,SI=serial.interval$fit[1:N2],
-                 EpidemicStart = NULL) # N0 = 6 to make it consistent with Rayleigh
+stan_data = list(M=length(countries),N=NULL,p=p,
+  x1=poly(1:N2,2)[,1], x2=poly(1:N2,2)[,2],
+  y=NULL,covariate1=NULL,covariate2=NULL,covariate3=NULL,
+  covariate4=NULL,covariate5=NULL,covariate6=NULL,covariate7=NULL,
+  deaths=NULL,f=NULL,N0=6,cases=NULL,LENGTHSCALE=7,SI=serial.interval$fit[1:N2],
+  EpidemicStart = NULL) # N0 = 6 to make it consistent with Rayleigh
 deaths_by_country = list()
 
 
@@ -68,25 +82,35 @@ for(Country in countries) {
   d1$date = as.Date(d1$DateRep,format='%d/%m/%Y')
   d1$t = decimal_date(d1$date) 
   d1=d1[order(d1$t),]
+  
+  # Sort out day of first case and day when 10 deaths are reached
   index = which(d1$Cases>0)[1]
   index1 = which(cumsum(d1$Deaths)>=10)[1] # also 5
-  index2 = index1-30
+  # Assumed day of seeding of new infections. See page 20 of report. 
+  index2 = index1-30 
   
-  print(sprintf("First non-zero cases is on day %d, and 30 days before 5 days is day %d",index,index2))
+  print(sprintf(paste("First non-zero cases is on day %d, and 30 days", 
+    "before 10 deaths is day %d"), index, index2))
   d1=d1[index2:nrow(d1),]
   stan_data$EpidemicStart = c(stan_data$EpidemicStart,index1+1-index2)
   
-  
+  # Specify covariate being on/off using 0, 1. Assume 1 on and after date 
+  # of start
   for (ii in 1:ncol(covariates1)) {
     covariate = names(covariates1)[ii]
-    d1[covariate] <- (as.Date(d1$DateRep, format='%d/%m/%Y') >= as.Date(covariates1[1,covariate]))*1  # should this be > or >=?
+    d1[covariate] <- (as.Date(d1$DateRep, format='%d/%m/%Y') >= 
+        as.Date(covariates1[1,covariate]))*1  # should this be > or >=?
   }
   
   dates[[Country]] = d1$date
-  # hazard estimation
+  
+  # Hazard estimation for death following infection
+  # Gamma distributions for time to infection from onset and time from 
+  # onset to death (see parameters below). 
+  # Then multiply by IFR to get death probability.
   N = length(d1$Cases)
   print(sprintf("%s has %d days of data",Country,N))
-  forecast = N2 - N
+  forecast = N2 - N # number of days to forecast?
   if(forecast < 0) {
     print(sprintf("%s: %d", Country, N))
     print("ERROR!!!! increasing N2")
@@ -94,47 +118,73 @@ for(Country in countries) {
     forecast = N2 - N
   }
   
-  h = rep(0,forecast+N) # discrete hazard rate from time t = 1, ..., 100
-  if(DEBUG) { # OLD -- but faster for testing this part of the code
+  h = rep(0, forecast + N) # discrete hazard rate from time t = 1, ..., 100
+  
+  if(DEBUG) { 
+    # OLD -- but faster for testing this part of the code
     mean = 18.8
     cv = 0.45
     
     for(i in 1:length(h))
-      h[i] = (IFR*pgammaAlt(i,mean = mean,cv=cv) - IFR*pgammaAlt(i-1,mean = mean,cv=cv)) / (1-IFR*pgammaAlt(i-1,mean = mean,cv=cv))
-  } else { # NEW
-    mean1 = 5.1; cv1 = 0.86; # infection to onset
+      h[i] = (IFR*pgammaAlt(i,mean = mean,cv=cv) -
+          IFR*pgammaAlt(i-1,mean = mean,cv=cv)) /
+      (1-IFR*pgammaAlt(i-1,mean = mean,cv=cv))
+    
+  } else { 
+    # Master 
+    mean1 = 5.1; cv1 = 0.86; # infection to onset 
     mean2 = 18.8; cv2 = 0.45 # onset to death
-    ## assume that IFR is probability of dying given infection
-    x1 = rgammaAlt(5e6,mean1,cv1) # infection-to-onset ----> do all people who are infected get to onset?
-    x2 = rgammaAlt(5e6,mean2,cv2) # onset-to-death
+    
+    ## assume that IFR is probability of dying given infection us 
+    ## gammaAlt functions from EnvStats package
+    
+    ## Infection to onset
+    x1 = rgammaAlt(5e6, mean1, cv1) 
+    # infection-to-onset ----> do all people who are infected get to onset?
+    
+    # RTG: I would say no because some would be asymptomatic? Should be 
+    # reflected in IFR though?
+    
+    ## Onset to death
+    x2 = rgammaAlt(5e6,mean2,cv2) 
+    
+    # Combined rate - time from infection to deaths door and then see if 
+    # die with probability given by IFR
     f = ecdf(x1+x2)
     convolution = function(u) (IFR * f(u))
     
     h[1] = (convolution(1.5) - convolution(0)) 
     for(i in 2:length(h)) {
-      h[i] = (convolution(i+.5) - convolution(i-.5)) / (1-convolution(i-.5))
+      h[i] = (convolution(i+0.5) - convolution(i-0.5)) / (1-convolution(i-0.5))
     }
   }
+  
+  # Set up survival curve.
+  # Probablity of survival by day i is number of survivors by day i-1 times 
+  # (1-hazard) of dying by day i-1.
   s = rep(0,N2)
   s[1] = 1 
   for(i in 2:N2) {
-    s[i] = s[i-1]*(1-h[i-1])
+    s[i] = s[i-1]*(1-h[i-1]) 
   }
-  f = s * h
+  # S = (1-h[1])*(1-h[2])*(1-h[3])*.....
   
+  # Number of fatalities each day - survivors * hazard of death
+  f = s * h 
   
-  
-  
+  # Set-up country epi data
   y=c(as.vector(as.numeric(d1$Cases)),rep(-1,forecast))
   reported_cases[[Country]] = as.vector(as.numeric(d1$Cases))
   deaths=c(as.vector(as.numeric(d1$Deaths)),rep(-1,forecast))
   cases=c(as.vector(as.numeric(d1$Cases)),rep(-1,forecast))
   deaths_by_country[[Country]] = as.vector(as.numeric(d1$Deaths))
+  
+  # Extend covaraites to forecast days
   covariates2 <- as.data.frame(d1[, colnames(covariates1)])
   # x=1:(N+forecast)
   covariates2[N:(N+forecast),] <- covariates2[N,]
   
-  ## append data
+  ## Append data to forecast days into stan_data
   stan_data$N = c(stan_data$N,N)
   stan_data$y = c(stan_data$y,y[1]) # just the index case!
   # stan_data$x = cbind(stan_data$x,x)
@@ -156,56 +206,59 @@ for(Country in countries) {
   }
 }
 
-# stan_data$covariate2 = 0 * stan_data$covariate2 # remove travel bans
-# stan_data$covariate4 = 0 * stan_data$covariate5 # remove sport
-# 
-# #stan_data$covariate1 = stan_data$covariate1 # school closure
-# stan_data$covariate2 = stan_data$covariate7 # self-isolating if ill
-# #stan_data$covariate3 = stan_data$covariate3 # public events
-# # create the `any intervention` covariate
-# stan_data$covariate4 = 1*as.data.frame((stan_data$covariate1+
-#                                           stan_data$covariate3+
-#                                           stan_data$covariate5+
-#                                           stan_data$covariate6+
-#                                           stan_data$covariate7) >= 1)
-# stan_data$covariate5 = stan_data$covariate5 # lockdown
-# stan_data$covariate6 = stan_data$covariate6 # social distancing encouraged
+## Sort out covariates as models should only take 6 covariates
+## Replace travel bans and sports with self-isolating and any intervention
+stan_data$covariate2 = 0 * stan_data$covariate2 # remove travel bans
+stan_data$covariate4 = 0 * stan_data$covariate5 # remove sport
 
-## For WPRO remove all interventions
-stan_data$covariate1 = 0 * stan_data$covariate1
-stan_data$covariate2 = 0 * stan_data$covariate2
-stan_data$covariate3 = 0 * stan_data$covariate3
-stan_data$covariate4 = 0 * stan_data$covariate4
-stan_data$covariate5 = 0 * stan_data$covariate5
-stan_data$covariate6 = 0 * stan_data$covariate6
+#stan_data$covariate1 = stan_data$covariate1 # school closure
+stan_data$covariate2 = stan_data$covariate7 # self-isolating if ill
+#stan_data$covariate3 = stan_data$covariate3 # public events
+# create the `any intervention` covariate
+stan_data$covariate4 = 1*as.data.frame((stan_data$covariate1+
+                                           stan_data$covariate3+
+                                           stan_data$covariate5+
+                                           stan_data$covariate6+
+                                           stan_data$covariate7) >= 1)
+stan_data$covariate5 = stan_data$covariate5 # lockdown
+stan_data$covariate6 = stan_data$covariate6 # social distancing encouraged
 stan_data$covariate7 = 0 # models should only take 6 covariates
 
+# Check NPI dates
 if(DEBUG) {
   for(i in 1:length(countries)) {
     write.csv(
       data.frame(date=dates[[i]],
-                 `school closure`=stan_data$covariate1[1:stan_data$N[i],i],
-                 `self isolating if ill`=stan_data$covariate2[1:stan_data$N[i],i],
-                 `public events`=stan_data$covariate3[1:stan_data$N[i],i],
-                 `government makes any intervention`=stan_data$covariate4[1:stan_data$N[i],i],
-                 `lockdown`=stan_data$covariate5[1:stan_data$N[i],i],
-                 `social distancing encouraged`=stan_data$covariate6[1:stan_data$N[i],i]),
+        `school closure`=stan_data$covariate1[1:stan_data$N[i],i],
+        `self isolating if ill`=stan_data$covariate2[1:stan_data$N[i],i],
+        `public events`=stan_data$covariate3[1:stan_data$N[i],i],
+        `government makes any intervention`=stan_data$covariate4[1:stan_data$N[i],i],
+        `lockdown`=stan_data$covariate5[1:stan_data$N[i],i],
+        `social distancing encouraged`=stan_data$covariate6[1:stan_data$N[i],i]),
       file=sprintf("results/%s-check-dates.csv",countries[i]),row.names=F)
   }
 }
 
+# Set-up and run sampling -------------------------------------------------
 stan_data$y = t(stan_data$y)
 options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
 m = stan_model(paste0('stan-models/',StanModel,'.stan'))
 
+fullRun <- FALSE
 if(DEBUG) {
   fit = sampling(m,data=stan_data,iter=40,warmup=20,chains=2)
 } else { 
-  fit = sampling(m,data=stan_data,iter=4000,warmup=2000,chains=8,thin=4,control = list(adapt_delta = 0.90, max_treedepth = 10))
-  # fit = sampling(m,data=stan_data,iter=200,warmup=100,chains=4,thin=4,control = list(adapt_delta = 0.90, max_treedepth = 10))
+  if(fullRun) {
+    fit = sampling(m,data=stan_data,iter=4000,warmup=2000,chains=8,thin=4,
+      control = list(adapt_delta = 0.90, max_treedepth = 10))
+  } else {
+    fit = sampling(m,data=stan_data,iter=200,warmup=100,chains=4,thin=4,
+      control = list(adapt_delta = 0.90, max_treedepth = 10))
+  }
 }  
 
+# Extract outputs and save results ----------------------------------------
 out = rstan::extract(fit)
 prediction = out$prediction
 estimated.deaths = out$E_deaths
@@ -218,9 +271,11 @@ print(sprintf("Jobid = %s",JOBID))
 
 save.image(paste0('results/',StanModel,'-',JOBID,'.Rdata'))
 
-save(fit,prediction,dates,reported_cases,deaths_by_country,countries,estimated.deaths,estimated.deaths.cf,out,covariates,file=paste0('results/',StanModel,'-',JOBID,'-stanfit.Rdata'))
+save(fit,prediction,dates,reported_cases,deaths_by_country,countries,
+  estimated.deaths,estimated.deaths.cf,out,covariates,
+  file=paste0('results/',StanModel,'-',JOBID,'-stanfit.Rdata'))
 
-# to visualize results
+# Visualize results -------------------------------------------------------
 library(bayesplot)
 filename <- paste0('base-',JOBID)
 plot_labels <- c("School Closure",
@@ -244,5 +299,6 @@ colnames(Rt) = countries
 g = (mcmc_intervals(Rt,prob = .9))
 ggsave(sprintf("results/%s-covars-final-rt.pdf",filename),g,width=4,height=6)
 # system(paste0("Rscript plot-3-panel.r ", filename,'.Rdata'))
+source("plot-3-panel.r")
 output <- make_three_panel_plot(paste0(filename,'.Rdata'))
 system(paste0("Rscript plot-forecast.r ",filename,'.Rdata')) ## to run this code you will need to adjust manual values of forecast required
