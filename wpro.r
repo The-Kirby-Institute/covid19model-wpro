@@ -42,12 +42,12 @@ covariates = read.csv('data_wpro/interventions.csv', stringsAsFactors = FALSE)
 covariates <- covariates[1:11, c(1,2,3,4,5,6, 7, 8)]
 
 ## making all covariates that happen after lockdown to have same date as lockdown
-# covariates$schools_universities[covariates$schools_universities > covariates$lockdown] <- covariates$lockdown[covariates$schools_universities > covariates$lockdown]
-# covariates$travel_restrictions[covariates$travel_restrictions > covariates$lockdown] <- covariates$lockdown[covariates$travel_restrictions > covariates$lockdown] 
-# covariates$public_events[covariates$public_events > covariates$lockdown] <- covariates$lockdown[covariates$public_events > covariates$lockdown]
-# covariates$sport[covariates$sport > covariates$lockdown] <- covariates$lockdown[covariates$sport > covariates$lockdown]
-# covariates$social_distancing_encouraged[covariates$social_distancing_encouraged > covariates$lockdown] <- covariates$lockdown[covariates$social_distancing_encouraged > covariates$lockdown]
-# covariates$self_isolating_if_ill[covariates$self_isolating_if_ill > covariates$lockdown] <- covariates$lockdown[covariates$self_isolating_if_ill > covariates$lockdown]
+covariates$schools_universities[covariates$schools_universities > covariates$lockdown] <- covariates$lockdown[covariates$schools_universities > covariates$lockdown]
+covariates$travel_restrictions[covariates$travel_restrictions > covariates$lockdown] <- covariates$lockdown[covariates$travel_restrictions > covariates$lockdown]
+covariates$public_events[covariates$public_events > covariates$lockdown] <- covariates$lockdown[covariates$public_events > covariates$lockdown]
+covariates$sport[covariates$sport > covariates$lockdown] <- covariates$lockdown[covariates$sport > covariates$lockdown]
+covariates$social_distancing_encouraged[covariates$social_distancing_encouraged > covariates$lockdown] <- covariates$lockdown[covariates$social_distancing_encouraged > covariates$lockdown]
+covariates$self_isolating_if_ill[covariates$self_isolating_if_ill > covariates$lockdown] <- covariates$lockdown[covariates$self_isolating_if_ill > covariates$lockdown]
 
 p <- ncol(covariates) - 1
 forecast = 0
@@ -57,11 +57,11 @@ if(DEBUG == FALSE) {
   N2 = 75 # Increase this for a further forecast
 }  else  {
   ### For faster runs:
-  # countries = c("Austria","Belgium") #,Spain")
+  # Restrict number of countries - don't need this at the moment. 
   N2 = 75
 }
-# countries = c("Italy","United_Kingdom","Spain","Norway","Austria","Switzerland")
 
+# Initialize inputs ------------------------------------------------------
 dates = list()
 reported_cases = list()
 stan_data = list(M=length(countries),N=NULL,p=p,
@@ -71,7 +71,6 @@ stan_data = list(M=length(countries),N=NULL,p=p,
   deaths=NULL,f=NULL,N0=6,cases=NULL,LENGTHSCALE=7,SI=serial.interval$fit[1:N2],
   EpidemicStart = NULL) # N0 = 6 to make it consistent with Rayleigh
 deaths_by_country = list()
-
 
 for(Country in countries) {
   IFR=ifr.by.country$weighted_fatality[ifr.by.country$country == Country]
@@ -103,6 +102,8 @@ for(Country in countries) {
   }
   
   dates[[Country]] = d1$date
+  
+  ## Hazard function and survival -----------------------------------------
   
   # Hazard estimation for death following infection
   # Gamma distributions for time to infection from onset and time from 
@@ -172,7 +173,7 @@ for(Country in countries) {
   # Number of fatalities each day - survivors * hazard of death
   f = s * h 
   
-  # Set-up country epi data
+  # Set-up country epi data and stan inputs -------------------------------
   y=c(as.vector(as.numeric(d1$Cases)),rep(-1,forecast))
   reported_cases[[Country]] = as.vector(as.numeric(d1$Cases))
   deaths=c(as.vector(as.numeric(d1$Deaths)),rep(-1,forecast))
