@@ -1,6 +1,6 @@
 Country,schools_universities,travel_restrictions,public_events,sport,lockdown,social_distancing_encouraged,self_isolating_if_ill,,Data inputted by,"note: enter the date on which the closing occurred, e.g. as the last day of UK schools will be 2020-03-20, I entered 2020-03-21",comments
-Philippines,13/03/2020,2/03/2020,13/03/2020,NA,NA,NA,NA,,Richard Gray,Used dates and NPI codes in Oxford NPI spreadsheet. S1 = Recommended 5/02/2020; Required 13/03/2020. S2 = Required 28/02/2020. S3 = Recommended 7/02/2020; Required 13/03/2020. S4 = Recommended 13/03/2020. S5 = None. S6 = Recommended 19/02/2020; Required 17/03/2020. S7 = 2-3/03/2020. ,
-Malaysia,18/03/2020,30/01/2020,12/03/2020,NA,NA,18/03/2020,NA,,Richard Gray,,
+Philippines,13/03/2020,28/02/2020,13/03/2020,13/03/2020,17/03/2020,2/03/2020,2/03/2020,,Richard Gray,Used dates and NPI codes in Oxford NPI spreadsheet. S1 = Recommended 5/02/2020; Required 13/03/2020. S2 = Required 28/02/2020. S3 = Recommended 7/02/2020; Required 13/03/2020. S4 = Recommended 13/03/2020. S5 = None. S6 = Recommended 19/02/2020; Required 17/03/2020. S7 = 2-3/03/2020. ,
+Malaysia,18/03/2020,18/03/2020,7/03/2020,NA,NA,18/03/2020,30/01/2020,,Richard Gray,Used dates and NPI codes in Oxford NPI spreadsheet. S1 =  Required 18/03/2020. S2 = Required 18/03/2020. S3 = Recommended 7/03/2020; Required 12/03/2020. S4 = NA. S5 = None. S5 = None. S6 = Required 18/03/2020. S7 = 30/01/2020. ,
 Laos,,,,,,,,,,,
 ,,,,,,,,,,,
 Oxford NPI code ,S1,S2,S3,S4,S5,S6,S7,,,,

@@ -22,13 +22,24 @@ make_three_panel_plot <- function(resultsFile){
   filename2 <- resultsFile #args[1] 
   load(paste0("results/", filename2))
   print(sprintf("loading: %s",paste0("results/",filename2)))
+  
+  # Sort out intervention dates
   data_interventions <- read.csv("data_wpro/interventions.csv", 
-                                 stringsAsFactors = FALSE)
+    stringsAsFactors = FALSE)
   covariates <- data_interventions[1:11, c(1,2,3,4,5,6, 7, 8)]
+  covariates[is.na(covariates)] <- "31/12/2020" 
+  covariates[,2:8] <- lapply(covariates[,2:8], 
+    function(x) as.Date(x, format='%d/%m/%Y'))
   
-  results <- vector(mode = "list", length = length(countries))
+  if ((length(countries) == 2) & (countries[1] == countries[2])) {
+    nCountries <- 1
+  } else {
+    nCountries <- length(countries) 
+  }
   
-  for(i in 1:length(countries)){
+  results <- vector(mode = "list", length = nCountries)
+  
+  for(i in 1:nCountries){
     print(i)
     N <- length(dates[[i]])
     country <- countries[[i]]
@@ -39,7 +50,6 @@ make_three_panel_plot <- function(resultsFile){
     predicted_cases_ui <- colQuantiles(prediction[,1:N,i], probs=.975)
     predicted_cases_li2 <- colQuantiles(prediction[,1:N,i], probs=.25)
     predicted_cases_ui2 <- colQuantiles(prediction[,1:N,i], probs=.75)
-    
     
     estimated_deaths <- colMeans(estimated.deaths[,1:N,i])
     estimated_deaths_li <- colQuantiles(estimated.deaths[,1:N,i], probs=.025)
@@ -53,7 +63,6 @@ make_three_panel_plot <- function(resultsFile){
     rt_li2 <- colQuantiles(out$Rt[,1:N,i],probs=.25)
     rt_ui2 <- colQuantiles(out$Rt[,1:N,i],probs=.75)
     
-    
     # delete these 2 lines
     covariates_country <- covariates[which(covariates$Country == country), 2:8]   
     
@@ -61,7 +70,7 @@ make_three_panel_plot <- function(resultsFile){
     covariates_country$sport = NULL 
     covariates_country$travel_restrictions = NULL 
     covariates_country_long <- gather(covariates_country[], key = "key", 
-                                      value = "value")
+      value = "value")
     covariates_country_long$x <- rep(NULL, length(covariates_country_long$key))
     un_dates <- unique(covariates_country_long$value)
     
@@ -74,43 +83,42 @@ make_three_panel_plot <- function(resultsFile){
       }
     }
     
-    
     covariates_country_long$value <- as_date(covariates_country_long$value) 
     covariates_country_long$country <- rep(country, 
-                                           length(covariates_country_long$value))
+      length(covariates_country_long$value))
     
     data_country <- data.frame("time" = as_date(as.character(dates[[i]])),
-                               "country" = rep(country, length(dates[[i]])),
-                               "reported_cases" = reported_cases[[i]], 
-                               "reported_cases_c" = cumsum(reported_cases[[i]]), 
-                               "predicted_cases_c" = cumsum(predicted_cases),
-                               "predicted_min_c" = cumsum(predicted_cases_li),
-                               "predicted_max_c" = cumsum(predicted_cases_ui),
-                               "predicted_cases" = predicted_cases,
-                               "predicted_min" = predicted_cases_li,
-                               "predicted_max" = predicted_cases_ui,
-                               "predicted_min2" = predicted_cases_li2,
-                               "predicted_max2" = predicted_cases_ui2,
-                               "deaths" = deaths_by_country[[i]],
-                               "deaths_c" = cumsum(deaths_by_country[[i]]),
-                               "estimated_deaths_c" =  cumsum(estimated_deaths),
-                               "death_min_c" = cumsum(estimated_deaths_li),
-                               "death_max_c"= cumsum(estimated_deaths_ui),
-                               "estimated_deaths" = estimated_deaths,
-                               "death_min" = estimated_deaths_li,
-                               "death_max"= estimated_deaths_ui,
-                               "death_min2" = estimated_deaths_li2,
-                               "death_max2"= estimated_deaths_ui2,
-                               "rt" = rt,
-                               "rt_min" = rt_li,
-                               "rt_max" = rt_ui,
-                               "rt_min2" = rt_li2,
-                               "rt_max2" = rt_ui2)
+      "country" = rep(country, length(dates[[i]])),
+      "reported_cases" = reported_cases[[i]], 
+      "reported_cases_c" = cumsum(reported_cases[[i]]), 
+      "predicted_cases_c" = cumsum(predicted_cases),
+      "predicted_min_c" = cumsum(predicted_cases_li),
+      "predicted_max_c" = cumsum(predicted_cases_ui),
+      "predicted_cases" = predicted_cases,
+      "predicted_min" = predicted_cases_li,
+      "predicted_max" = predicted_cases_ui,
+      "predicted_min2" = predicted_cases_li2,
+      "predicted_max2" = predicted_cases_ui2,
+      "deaths" = deaths_by_country[[i]],
+      "deaths_c" = cumsum(deaths_by_country[[i]]),
+      "estimated_deaths_c" =  cumsum(estimated_deaths),
+      "death_min_c" = cumsum(estimated_deaths_li),
+      "death_max_c"= cumsum(estimated_deaths_ui),
+      "estimated_deaths" = estimated_deaths,
+      "death_min" = estimated_deaths_li,
+      "death_max"= estimated_deaths_ui,
+      "death_min2" = estimated_deaths_li2,
+      "death_max2"= estimated_deaths_ui2,
+      "rt" = rt,
+      "rt_min" = rt_li,
+      "rt_max" = rt_ui,
+      "rt_min2" = rt_li2,
+      "rt_max2" = rt_ui2)
     
     make_plots(data_country = data_country, 
-               covariates_country_long = covariates_country_long,
-               filename2 = filename2,
-               country = country)
+      covariates_country_long = covariates_country_long,
+      filename2 = filename2,
+      country = country)
     
     results[[i]] <- data_country
     
@@ -120,16 +128,16 @@ make_three_panel_plot <- function(resultsFile){
   
 }
 
-#---------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 make_plots <- function(data_country, covariates_country_long, 
-                       filename2, country){
+  filename2, country){
   
   data_cases_95 <- data.frame(data_country$time, data_country$predicted_min, 
-                              data_country$predicted_max)
+    data_country$predicted_max)
   names(data_cases_95) <- c("time", "cases_min", "cases_max")
   data_cases_95$key <- rep("nintyfive", length(data_cases_95$time))
   data_cases_50 <- data.frame(data_country$time, data_country$predicted_min2, 
-                              data_country$predicted_max2)
+    data_country$predicted_max2)
   names(data_cases_50) <- c("time", "cases_min", "cases_max")
   data_cases_50$key <- rep("fifty", length(data_cases_50$time))
   data_cases <- rbind(data_cases_95, data_cases_50)
@@ -137,26 +145,28 @@ make_plots <- function(data_country, covariates_country_long,
   
   p1 <- ggplot(data_country) +
     geom_bar(data = data_country, aes(x = time, y = reported_cases), 
-             fill = "coral4", stat='identity', alpha=0.5) + 
-    geom_ribbon(data = data_cases, 
-                aes(x = time, ymin = cases_min, ymax = cases_max, fill = key)) +
+      fill = "coral4", stat='identity', alpha=0.5) + 
+    geom_ribbon(data = data_cases, aes(x = time, ymin = cases_min, 
+      ymax = cases_max, fill = key)) +
+    geom_line(data = data_country, aes(x = time, y = predicted_cases), 
+              col = "blue4") + 
     xlab("") +
     ylab("Daily number of infections") +
     scale_x_date(date_breaks = "weeks", labels = date_format("%e %b")) + 
     scale_fill_manual(name = "", labels = c("50%", "95%"),
-                      values = c(alpha("deepskyblue4", 0.55), 
-                                 alpha("deepskyblue4", 0.45))) + 
+      values = c(alpha("deepskyblue4", 0.55), 
+        alpha("deepskyblue4", 0.45))) + 
     theme_pubr() + 
     theme(axis.text.x = element_text(angle = 45, hjust = 1), 
-          legend.position = "None") + 
+      legend.position = "None") + 
     guides(fill=guide_legend(ncol=1))
   
   data_deaths_95 <- data.frame(data_country$time, data_country$death_min, 
-                               data_country$death_max)
+    data_country$death_max)
   names(data_deaths_95) <- c("time", "death_min", "death_max")
   data_deaths_95$key <- rep("nintyfive", length(data_deaths_95$time))
   data_deaths_50 <- data.frame(data_country$time, data_country$death_min2, 
-                               data_country$death_max2)
+    data_country$death_max2)
   names(data_deaths_50) <- c("time", "death_min", "death_max")
   data_deaths_50$key <- rep("fifty", length(data_deaths_50$time))
   data_deaths <- rbind(data_deaths_95, data_deaths_50)
@@ -165,35 +175,37 @@ make_plots <- function(data_country, covariates_country_long,
   
   p2 <-   ggplot(data_country, aes(x = time)) +
     geom_bar(data = data_country, aes(y = deaths, fill = "reported"),
-             fill = "coral4", stat='identity', alpha=0.5) +
+      fill = "coral4", stat='identity', alpha=0.5) +
     geom_ribbon(
       data = data_deaths,
       aes(ymin = death_min, ymax = death_max, fill = key)) +
+    geom_line(data = data_country, aes(x = time, y = estimated_deaths), 
+              col = "blue4") + 
     xlab("") +
     ylab("Daily number of deaths") +
     scale_x_date(date_breaks = "weeks", labels = date_format("%e %b")) +
     scale_fill_manual(name = "", labels = c("50%", "95%"),
-                      values = c(alpha("deepskyblue4", 0.55), 
-                                 alpha("deepskyblue4", 0.45))) + 
+      values = c(alpha("deepskyblue4", 0.55), 
+        alpha("deepskyblue4", 0.45))) + 
     theme_pubr() + 
     theme(axis.text.x = element_text(angle = 45, hjust = 1), 
-          legend.position = "None") + 
+      legend.position = "None") + 
     guides(fill=guide_legend(ncol=1))
   
   
   plot_labels <- c("Complete lockdown", 
-                   "Public events banned",
-                   "School closure",
-                   "Self isolation",
-                   "Social distancing")
+    "Public events banned",
+    "School closure",
+    "Self isolation",
+    "Social distancing")
   
   # Plotting interventions
   data_rt_95 <- data.frame(data_country$time, 
-                           data_country$rt_min, data_country$rt_max)
+    data_country$rt_min, data_country$rt_max)
   names(data_rt_95) <- c("time", "rt_min", "rt_max")
   data_rt_95$key <- rep("nintyfive", length(data_rt_95$time))
   data_rt_50 <- data.frame(data_country$time, data_country$rt_min2, 
-                           data_country$rt_max2)
+    data_country$rt_max2)
   names(data_rt_50) <- c("time", "rt_min", "rt_max")
   data_rt_50$key <- rep("fifty", length(data_rt_50$time))
   data_rt <- rbind(data_rt_95, data_rt_50)
@@ -201,37 +213,37 @@ make_plots <- function(data_country, covariates_country_long,
   
   p3 <- ggplot(data_country) +
     geom_stepribbon(data = data_rt, aes(x = time, ymin = rt_min, ymax = rt_max, 
-                                        group = key,
-                                        fill = key)) +
+      group = key,
+      fill = key)) +
     geom_hline(yintercept = 1, color = 'black', size = 0.1) + 
     geom_segment(data = covariates_country_long,
-                 aes(x = value, y = 0, xend = value, yend = max(x)), 
-                 linetype = "dashed", colour = "grey", alpha = 0.75) +
+      aes(x = value, y = 0, xend = value, yend = max(x)), 
+      linetype = "dashed", colour = "grey", alpha = 0.75) +
     geom_point(data = covariates_country_long, aes(x = value, 
-                                                   y = x, 
-                                                   group = key, 
-                                                   shape = key, 
-                                                   col = key), size = 2) +
+      y = x, 
+      group = key, 
+      shape = key, 
+      col = key), size = 2) +
     xlab("") +
     ylab(expression(R[t])) +
     scale_fill_manual(name = "", labels = c("50%", "95%"),
-                      values = c(alpha("seagreen", 0.75), alpha("seagreen", 0.5))) + 
+      values = c(alpha("seagreen", 0.75), alpha("seagreen", 0.5))) + 
     scale_shape_manual(name = "Interventions", labels = plot_labels,
-                       values = c(21, 22, 23, 24, 25, 12)) + 
+      values = c(21, 22, 23, 24, 25, 12)) + 
     scale_colour_discrete(name = "Interventions", labels = plot_labels) + 
     scale_x_date(date_breaks = "weeks", labels = date_format("%e %b"), 
-                 limits = c(data_country$time[1], 
-                            data_country$time[length(data_country$time)])) + 
+      limits = c(data_country$time[1], 
+        data_country$time[length(data_country$time)])) + 
     theme_pubr() + 
     theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
     theme(legend.position="right")
   
   p <- plot_grid(p1, p2, p3, ncol = 3, rel_widths = c(1, 1, 2))
-  save_plot(filename = paste0("figures/", country, "_three_panel_", filename2, ".pdf"), 
-            p, base_width = 14)
+  save_plot(filename = paste0("figures/", country, "_three_panel_", 
+    filename2, ".pdf"), p, base_width = 14)
 }
 
-#-----------------------------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 # filename <- "base-993627.Rdata"
 # output <- make_three_panel_plot()
 

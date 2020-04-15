@@ -8,15 +8,22 @@ library(EnvStats) # For gammaAlt functions
 ## Office (WPRO). Additional comments added to translate methods from 
 ## Imperial report:
 ## * Seth Flaxman, Swapnil Mishra, Axel Gandy et al. Estimating the number 
-## of infections and the impact of nonpharmaceutical interventions on COVID-19 in 11 
+## of infections and the impact of nonpharmaceutical interventions on 
+## COVID-19 in 11 
 ## European countries. Imperial College London (30-03-2020)
 ## doi: https://doi.org/10.25561/77731.
 
+# User Options ------------------------------------------------------------
 countries <- c(
-  "Philippines",
-  "Malaysia" #,
+  "Philippines" #,
+  # "Malaysia" #,
   # "Laos"
 )
+
+options <- list("include_ncd" = TRUE,
+  "npi_on" = TRUE,
+  "fullRun" = TRUE,
+  "debug" = FALSE)
 
 args = commandArgs(trailingOnly=TRUE)
 if(length(args) == 0) {
@@ -26,20 +33,45 @@ StanModel = args[1]
 
 print(sprintf("Running %s",StanModel))
 
-## Reading all data
+## Reading all data -------------------------------------------------------
 d=readRDS('data_wpro/COVID-19-up-to-date.rds')
 
 ## get IFR
 ifr.by.country = read.csv("data_wpro/weighted_fatality.csv")
 ifr.by.country$country = as.character(ifr.by.country[,1])
+if (options$include_ncd) {
+  ifr.by.country$weighted_fatality = ifr.by.country$weighted_fatality_NCD
+} else {
+  ifr.by.country$weighted_fatality = ifr.by.country$weighted_fatality_noNCD
+}
 
+if (length(countries) == 1) {
+  ifr.by.country = ifr.by.country[ifr.by.country$country == countries[1],]
+  ifr.by.country = rbind(ifr.by.country,ifr.by.country)
+}
+
+# Get serial interval
 serial.interval = read.csv("data_wpro/serial_interval.csv") 
-# Not sure why we serial interval instead of just specifying mean and cv below??
+# Not sure why we serial interval instead of just specifying mean and cv below?? Maybe because it is discretized see page 19 of report. 
 # dgammaAlt(100, 6.5, cv = 0.62)
 
 # Start sorting out NPIs which are given by dates of start.
-covariates = read.csv('data_wpro/interventions.csv', stringsAsFactors = FALSE)
-covariates <- covariates[1:11, c(1,2,3,4,5,6, 7, 8)]
+covariates = read.csv('data_wpro/interventions.csv', 
+  stringsAsFactors = FALSE)
+covariates <- covariates[1:length(countries), c(1,2,3,4,5,6, 7, 8)]
+
+# If missing put far into future
+covariates[is.na(covariates)] <- "31/12/2020" 
+
+# Makes sure dates are right format
+covariates[,2:8] <- lapply(covariates[,2:8], 
+  function(x) as.Date(x, format='%d/%m/%Y'))
+
+# Hack if only one country
+if (length(countries) == 1) {
+  covariates = covariates[covariates$Country == countries[1],]
+  covariates = rbind(covariates,covariates)
+}
 
 ## making all covariates that happen after lockdown to have same date as lockdown
 covariates$schools_universities[covariates$schools_universities > covariates$lockdown] <- covariates$lockdown[covariates$schools_universities > covariates$lockdown]
@@ -52,13 +84,17 @@ covariates$self_isolating_if_ill[covariates$self_isolating_if_ill > covariates$l
 p <- ncol(covariates) - 1
 forecast = 0
 
-DEBUG = FALSE
-if(DEBUG == FALSE) {
+if(options$debug == FALSE) {
   N2 = 75 # Increase this for a further forecast
 }  else  {
   ### For faster runs:
   # Restrict number of countries - don't need this at the moment. 
   N2 = 75
+}
+
+# Hack to handle one country
+if (length(countries) == 1) {
+  countries <- c(countries[1], countries[1])
 }
 
 # Initialize inputs ------------------------------------------------------
@@ -68,7 +104,8 @@ stan_data = list(M=length(countries),N=NULL,p=p,
   x1=poly(1:N2,2)[,1], x2=poly(1:N2,2)[,2],
   y=NULL,covariate1=NULL,covariate2=NULL,covariate3=NULL,
   covariate4=NULL,covariate5=NULL,covariate6=NULL,covariate7=NULL,
-  deaths=NULL,f=NULL,N0=6,cases=NULL,LENGTHSCALE=7,SI=serial.interval$fit[1:N2],
+  deaths=NULL,f=NULL,N0=6,cases=NULL,LENGTHSCALE=7,
+  SI=serial.interval$fit[1:N2],
   EpidemicStart = NULL) # N0 = 6 to make it consistent with Rayleigh
 deaths_by_country = list()
 
@@ -98,7 +135,8 @@ for(Country in countries) {
   for (ii in 1:ncol(covariates1)) {
     covariate = names(covariates1)[ii]
     d1[covariate] <- (as.Date(d1$DateRep, format='%d/%m/%Y') >= 
-        as.Date(covariates1[1,covariate]))*1  # should this be > or >=?
+        as.Date(covariates1[1,covariate], format='%d/%m/%Y'))*1  
+    # should this be > or >=?
   }
   
   dates[[Country]] = d1$date
@@ -121,7 +159,7 @@ for(Country in countries) {
   
   h = rep(0, forecast + N) # discrete hazard rate from time t = 1, ..., 100
   
-  if(DEBUG) { 
+  if(options$debug) { 
     # OLD -- but faster for testing this part of the code
     mean = 18.8
     cv = 0.45
@@ -154,9 +192,13 @@ for(Country in countries) {
     f = ecdf(x1+x2)
     convolution = function(u) (IFR * f(u))
     
+    # Discretized daily infection to death Distribution?? - 
+    # see page 17-18 of report
     h[1] = (convolution(1.5) - convolution(0)) 
     for(i in 2:length(h)) {
-      h[i] = (convolution(i+0.5) - convolution(i-0.5)) / (1-convolution(i-0.5))
+      # I don't get this estimate for the integral??
+      h[i] = (convolution(i+0.5) - convolution(i-0.5)) / 
+        (1-convolution(i-0.5))
     }
   }
   
@@ -207,26 +249,37 @@ for(Country in countries) {
   }
 }
 
-## Sort out covariates as models should only take 6 covariates
-## Replace travel bans and sports with self-isolating and any intervention
-stan_data$covariate2 = 0 * stan_data$covariate2 # remove travel bans
-stan_data$covariate4 = 0 * stan_data$covariate5 # remove sport
-
-#stan_data$covariate1 = stan_data$covariate1 # school closure
-stan_data$covariate2 = stan_data$covariate7 # self-isolating if ill
-#stan_data$covariate3 = stan_data$covariate3 # public events
-# create the `any intervention` covariate
-stan_data$covariate4 = 1*as.data.frame((stan_data$covariate1+
-                                           stan_data$covariate3+
-                                           stan_data$covariate5+
-                                           stan_data$covariate6+
-                                           stan_data$covariate7) >= 1)
-stan_data$covariate5 = stan_data$covariate5 # lockdown
-stan_data$covariate6 = stan_data$covariate6 # social distancing encouraged
-stan_data$covariate7 = 0 # models should only take 6 covariates
+if (options$npi_on) {
+  ## Sort out covariates as models should only take 6 covariates
+  ## Replace travel bans and sports with self-isolating and any intervention
+  stan_data$covariate2 = 0 * stan_data$covariate2 # remove travel bans
+  stan_data$covariate4 = 0 * stan_data$covariate5 # remove sport
+  
+  #stan_data$covariate1 = stan_data$covariate1 # school closure
+  stan_data$covariate2 = stan_data$covariate7 # self-isolating if ill
+  #stan_data$covariate3 = stan_data$covariate3 # public events
+  # create the `any intervention` covariate
+  stan_data$covariate4 = 1*as.data.frame((stan_data$covariate1+
+      stan_data$covariate3+
+      stan_data$covariate5+
+      stan_data$covariate6+
+      stan_data$covariate7) >= 1)
+  stan_data$covariate5 = stan_data$covariate5 # lockdown
+  stan_data$covariate6 = stan_data$covariate6 # social distancing encouraged
+  stan_data$covariate7 = 0 # models should only take 6 covariates
+} else {
+  # Turn off NPIs
+  stan_data$covariate1 = 0 * stan_data$covariate1
+  stan_data$covariate2 = 0 * stan_data$covariate2
+  stan_data$covariate3 = 0 * stan_data$covariate3
+  stan_data$covariate4 = 0 * stan_data$covariate4
+  stan_data$covariate5 = 0 * stan_data$covariate5
+  stan_data$covariate6 = 0 * stan_data$covariate6
+  stan_data$covariate7 = 0
+}
 
 # Check NPI dates
-if(DEBUG) {
+if(options$debug) {
   for(i in 1:length(countries)) {
     write.csv(
       data.frame(date=dates[[i]],
@@ -246,8 +299,7 @@ options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
 m = stan_model(paste0('stan-models/',StanModel,'.stan'))
 
-fullRun <- FALSE
-if(DEBUG) {
+if(options$debug) {
   fit = sampling(m,data=stan_data,iter=40,warmup=20,chains=2)
 } else { 
   if(fullRun) {
@@ -280,15 +332,17 @@ save(fit,prediction,dates,reported_cases,deaths_by_country,countries,
 library(bayesplot)
 filename <- paste0('base-',JOBID)
 plot_labels <- c("School Closure",
-                 "Self Isolation",
-                 "Public Events",
-                 "First Intervention",
-                 "Lockdown", 'Social distancing')
+  "Self Isolation",
+  "Public Events",
+  "First Intervention",
+  "Lockdown", 'Social distancing')
 alpha = (as.matrix(out$alpha))
 colnames(alpha) = plot_labels
 g = (mcmc_intervals(alpha, prob = .9))
-ggsave(sprintf("results/%s-covars-alpha-log.pdf",filename),g,width=4,height=6)
-g = (mcmc_intervals(alpha, prob = .9,transformations = function(x) exp(-x)))
+ggsave(sprintf("results/%s-covars-alpha-log.pdf",filename),g,width=4,
+  height=6)
+g = (mcmc_intervals(alpha, prob = .9,
+  transformations = function(x) exp(-x)))
 ggsave(sprintf("results/%s-covars-alpha.pdf",filename),g,width=4,height=6)
 mu = (as.matrix(out$mu))
 colnames(mu) = countries
@@ -298,8 +352,13 @@ dimensions <- dim(out$Rt)
 Rt = (as.matrix(out$Rt[,dimensions[2],]))
 colnames(Rt) = countries
 g = (mcmc_intervals(Rt,prob = .9))
-ggsave(sprintf("results/%s-covars-final-rt.pdf",filename),g,width=4,height=6)
+ggsave(sprintf("results/%s-covars-final-rt.pdf",filename),g,width=4,
+  height=6)
+
+
 # system(paste0("Rscript plot-3-panel.r ", filename,'.Rdata'))
 source("plot-3-panel.r")
-output <- make_three_panel_plot(paste0(filename,'.Rdata'))
+summaryOutput <- make_three_panel_plot(paste0(filename,'.Rdata'))
+write.csv(summaryOutput, paste0('figures/SummaryResults-',JOBID,'.csv'))
+
 system(paste0("Rscript plot-forecast.r ",filename,'.Rdata')) ## to run this code you will need to adjust manual values of forecast required
