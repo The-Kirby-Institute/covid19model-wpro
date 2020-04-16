@@ -1,3 +1,6 @@
+# Web file output
+web/
+
 # History files
 .Rhistory
 .Rapp.history
@@ -47,5 +50,7 @@ figures/*.png
 figures/*.pdf
 figures/*.csv
 Rplots.pdf
+web/*
+results/*.csv
 
 data_wpro/
