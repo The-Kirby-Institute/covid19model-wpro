@@ -1,5 +1,6 @@
 library(lubridate)
-# library(readxl)
+library(utils)
+library(httr)
 
 # date_offset <- 0
 url <- "https://opendata.ecdc.europa.eu/covid19/casedistribution/csv"
@@ -8,15 +9,19 @@ url <- "https://opendata.ecdc.europa.eu/covid19/casedistribution/csv"
 
 url_page <- "https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide"
 tryCatch({
-  code <- download.file(url, "data_wpro/COVID-19-up-to-date.csv")
-  if (code != 0) {
+  #download the dataset from the ECDC website to a local temporary file
+  r <- GET("https://opendata.ecdc.europa.eu/covid19/casedistribution/csv", 
+    authenticate(":", ":", type="ntlm"), 
+    write_disk("data_wpro/COVID-19-up-to-date.csv", overwrite=TRUE))
+  
+  if (http_error(r)) {
     stop("Error downloading file")
   }
 },
-error = function(e) {
-  stop(sprintf("Error downloading file '%s': %s, please check %s",
-               url, e$message, url_page))
-})
+  error = function(e) {
+    stop(sprintf("Error downloading file '%s': %s, please check %s",
+      url, e$message, url_page))
+  })
 
 
 d <- read.csv("data_wpro/COVID-19-up-to-date.csv", stringsAsFactors = FALSE)
@@ -26,4 +31,4 @@ names(d)[names(d) == "countriesAndTerritories"] <- "Countries.and.territories"
 names(d)[names(d) == "deaths"] <- "Deaths"
 names(d)[names(d) == "cases"] <- "Cases"
 names(d)[names(d) == "dateRep"] <- "DateRep"
-saveRDS(d, "data_wpro/COVID-19-up-to-date.rds")
+saveRDS(d, "data/COVID-19-up-to-date.rds")
