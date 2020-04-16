@@ -15,14 +15,14 @@ library(EnvStats) # For gammaAlt functions
 
 # User Options ------------------------------------------------------------
 countries <- c(
-  "Philippines" #,
-  # "Malaysia" #,
+  "Philippines",
+  "Malaysia" #,
   # "Laos"
 )
 
-options <- list("include_ncd" = TRUE,
-  "npi_on" = TRUE,
-  "fullRun" = TRUE,
+options <- list("include_ncd" = FALSE,
+  "npi_on" = FALSE,
+  "fullRun" = FALSE,
   "debug" = FALSE)
 
 args = commandArgs(trailingOnly=TRUE)
@@ -302,7 +302,7 @@ m = stan_model(paste0('stan-models/',StanModel,'.stan'))
 if(options$debug) {
   fit = sampling(m,data=stan_data,iter=40,warmup=20,chains=2)
 } else { 
-  if(fullRun) {
+  if(options$fullRun) {
     fit = sampling(m,data=stan_data,iter=4000,warmup=2000,chains=8,thin=4,
       control = list(adapt_delta = 0.90, max_treedepth = 10))
   } else {
@@ -324,41 +324,43 @@ print(sprintf("Jobid = %s",JOBID))
 
 save.image(paste0('results/',StanModel,'-',JOBID,'.Rdata'))
 
-save(fit,prediction,dates,reported_cases,deaths_by_country,countries,
+save(fit,out,prediction,dates,reported_cases,deaths_by_country,countries,
   estimated.deaths,estimated.deaths.cf,out,covariates,
   file=paste0('results/',StanModel,'-',JOBID,'-stanfit.Rdata'))
 
 # Visualize results -------------------------------------------------------
-library(bayesplot)
+# library(bayesplot)
 filename <- paste0('base-',JOBID)
-plot_labels <- c("School Closure",
-  "Self Isolation",
-  "Public Events",
-  "First Intervention",
-  "Lockdown", 'Social distancing')
-alpha = (as.matrix(out$alpha))
-colnames(alpha) = plot_labels
-g = (mcmc_intervals(alpha, prob = .9))
-ggsave(sprintf("results/%s-covars-alpha-log.pdf",filename),g,width=4,
-  height=6)
-g = (mcmc_intervals(alpha, prob = .9,
-  transformations = function(x) exp(-x)))
-ggsave(sprintf("results/%s-covars-alpha.pdf",filename),g,width=4,height=6)
-mu = (as.matrix(out$mu))
-colnames(mu) = countries
-g = (mcmc_intervals(mu,prob = .9))
-ggsave(sprintf("results/%s-covars-mu.pdf",filename),g,width=4,height=6)
-dimensions <- dim(out$Rt)
-Rt = (as.matrix(out$Rt[,dimensions[2],]))
-colnames(Rt) = countries
-g = (mcmc_intervals(Rt,prob = .9))
-ggsave(sprintf("results/%s-covars-final-rt.pdf",filename),g,width=4,
-  height=6)
+# plot_labels <- c("School Closure",
+#   "Self Isolation",
+#   "Public Events",
+#   "First Intervention",
+#   "Lockdown", 'Social distancing')
+# alpha = (as.matrix(out$alpha))
+# colnames(alpha) = plot_labels
+# g = (mcmc_intervals(alpha, prob = .9))
+# ggsave(sprintf("results/%s-covars-alpha-log.pdf",filename),g,width=4,
+#   height=6)
+# g = (mcmc_intervals(alpha, prob = .9,
+#   transformations = function(x) exp(-x)))
+# ggsave(sprintf("results/%s-covars-alpha.pdf",filename),g,width=4,height=6)
+# mu = (as.matrix(out$mu))
+# colnames(mu) = countries
+# g = (mcmc_intervals(mu,prob = .9))
+# ggsave(sprintf("results/%s-covars-mu.pdf",filename),g,width=4,height=6)
+# dimensions <- dim(out$Rt)
+# Rt = (as.matrix(out$Rt[,dimensions[2],]))
+# colnames(Rt) = countries
+# g = (mcmc_intervals(Rt,prob = .9))
+# ggsave(sprintf("results/%s-covars-final-rt.pdf",filename),g,width=4,
+#   height=6)
 
 
 # system(paste0("Rscript plot-3-panel.r ", filename,'.Rdata'))
 source("plot-3-panel.r")
 summaryOutput <- make_three_panel_plot(paste0(filename,'.Rdata'))
-write.csv(summaryOutput, paste0('figures/SummaryResults-',JOBID,'.csv'))
-
-system(paste0("Rscript plot-forecast.r ",filename,'.Rdata')) ## to run this code you will need to adjust manual values of forecast required
+for (ii in 1:length(countries)) {
+  write.csv(summaryOutput[[ii]], paste0('figures/SummaryResults-',JOBID,
+    '-',countries[[ii]],'.csv'))
+}
+# system(paste0("Rscript plot-forecast.r ",filename,'.Rdata')) ## to run this code you will need to adjust manual values of forecast required

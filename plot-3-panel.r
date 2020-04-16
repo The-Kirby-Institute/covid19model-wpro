@@ -26,7 +26,7 @@ make_three_panel_plot <- function(resultsFile){
   # Sort out intervention dates
   data_interventions <- read.csv("data_wpro/interventions.csv", 
     stringsAsFactors = FALSE)
-  covariates <- data_interventions[1:11, c(1,2,3,4,5,6, 7, 8)]
+  covariates <- data_interventions[1:length(countries), c(1,2,3,4,5,6, 7, 8)]
   covariates[is.na(covariates)] <- "31/12/2020" 
   covariates[,2:8] <- lapply(covariates[,2:8], 
     function(x) as.Date(x, format='%d/%m/%Y'))
