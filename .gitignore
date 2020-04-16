@@ -45,4 +45,5 @@ results/*.pdf
 results/*.png
 figures/*.png
 figures/*.pdf
+figures/*.csv
 Rplots.pdf
