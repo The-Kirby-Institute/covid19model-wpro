@@ -19,14 +19,15 @@ source("utils/geom-stepribbon.r")
 make_three_panel_plot <- function(resultsFile){
   
   # args <- commandArgs(trailingOnly = TRUE)
-  if (length(args)==1){
-    filename2 = args[1]
-    percent_pop = FALSE
-  } else {
-    filename2 = args[1]
-    percent_pop = args[2]
-  }
-  
+  # if (length(args)==1){
+  #   filename2 = args[1]
+  #   percent_pop = FALSE
+  # } else {
+  #   filename2 = args[1]
+  #   percent_pop = args[2]
+  # }
+  filename2 = resultsFile
+  percent_pop = FALSE
   load(paste0("results/", filename2))
   print(sprintf("loading: %s",paste0("results/",filename2)))
   
@@ -49,8 +50,8 @@ make_three_panel_plot <- function(resultsFile){
     'schools_universities','self_isolating_if_ill', 
     'social_distancing_encouraged')
   covariates <- covariates[c('Country','schools_universities', 
-    'self_isolating_if_ill', 'public_events', 'lockdown', '
-    social_distancing_encouraged')]
+    'self_isolating_if_ill', 'public_events', 'lockdown', 
+    'social_distancing_encouraged')]
   covariates$schools_universities <- as.Date(covariates$schools_universities, 
     format = "%d.%m.%Y")
   covariates$lockdown <- as.Date(covariates$lockdown, format = "%d.%m.%Y")
@@ -319,8 +320,8 @@ make_plots <- function(data_country, covariates_country_long,
   
   p <- plot_grid(p1, p2, p3, ncol = 3, rel_widths = c(1, 1, 2))
  
-  save_plot(filename = paste0("figures/", country, "_three_pannel_", filename2, ".png"), 
+  save_plot(filename = paste0("figures/", country, "_three_panel_", filename2, ".png"), 
     p, base_width = 14)
 }
 
-make_three_pannel_plot()
+# make_three_panel_plot()
