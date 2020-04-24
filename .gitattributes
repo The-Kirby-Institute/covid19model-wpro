@@ -1,2 +1,13 @@
 # Ensure shell scripts use LF.
 *.sh        eol=lf
+
+# Source files
+# ============
+*.Rdata text
+*.rdb   binary
+*.rds   binary
+*.Rd    text
+*.Rdx   binary
+*.Rmd	text eol=CRLF
+*.R  	text eol=CRLF
+*.r     text eol=CRLF
