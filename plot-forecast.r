@@ -39,7 +39,7 @@ make_forecast_plot <- function(){
   # Start gathering the data 
   for(i in 1:nCountries){
     N <- length(dates[[i]])
-    N2 <- N + 7
+    N2 <- N + 10 #
     country <- countries[[i]]
     
     predicted_cases <- colMeans(prediction[,1:N,i])
@@ -84,9 +84,9 @@ make_forecast_plot <- function(){
       "rt_max" = rt_ui)
     
     times <- as_date(as.character(dates[[i]]))
-    times_forecast <- times[length(times)] + 0:7
+    times_forecast <- times[length(times)] + 0:10
     data_country_forecast <- data.frame("time" = times_forecast,
-      "country" = rep(country, 8),
+      "country" = rep(country, 11),
       "estimated_deaths_forecast" = estimated_deaths_forecast,
       "death_min_forecast" = estimated_deaths_li_forecast,
       "death_max_forecast"= estimated_deaths_ui_forecast)
@@ -144,7 +144,7 @@ make_single_plot <- function(data_country, data_country_forecast, filename, coun
     theme_pubr(base_family="sans") + 
     theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
     guides(fill=guide_legend(ncol=1, reverse = TRUE)) + 
-    annotate(geom="text", x=data_country$time[length(data_country$time)]+8, 
+    annotate(geom="text", x=data_country$time[length(data_country$time)]+11,
       y=10000, label="",
       color="black")
   print(p)

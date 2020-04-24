@@ -358,16 +358,16 @@ ggsave(sprintf("results/%s-final-rt.png",filename),g,width=4,height=6)
 # system(paste0("Rscript plot-3-panel.r ", filename,'-stanfit.Rdata'))
 source("plot-3-panel.r")
 summaryOutput <- make_three_panel_plot(paste0(filename,'-stanfit.Rdata'))
-# for (ii in 1:length(countries)) {
-#   write.csv(summaryOutput[[ii]], paste0('figures/SummaryResults-',JOBID,
-#     '-',countries[[ii]],'.csv'))
-# }
-# system(paste0("Rscript plot-forecast.r ",filename,'-stanfit.Rdata'))
-system(paste0("Rscript make-table.r results/",filename,'-stanfit.Rdata'))
-verify_result <- system(paste0("Rscript web-verify-output.r ", filename,'.Rdata'),intern=FALSE)
-if(verify_result != 0){
-  stop("Verification of web output failed!")
+for (ii in 1:length(countries)) {
+  write.csv(summaryOutput[[ii]], paste0('figures/SummaryResults-',JOBID,
+    '-',countries[[ii]],'.csv'))
 }
+system(paste0("Rscript plot-forecast.r ",filename,'-stanfit.Rdata'))
+# system(paste0("Rscript make-table.r results/",filename,'-stanfit.Rdata'))
+# verify_result <- system(paste0("Rscript web-verify-output.r ", filename,'.Rdata'),intern=FALSE)
+# if(verify_result != 0){
+#   stop("Verification of web output failed!")
+# }
 
 
 
