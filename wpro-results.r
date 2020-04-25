@@ -20,6 +20,7 @@ load(paste0("results/DateRep-", dateDir, "/", filename))
 # system(paste0("Rscript covariate-size-effects.r ", "DateRep-", dateDir, "/", filename,
   # '-stanfit.Rdata'))
 results <- StanResults(countries,JOBID,out,resultsDir)
+plot_covariate_effects(resultsDir, out)
 
 # Sort out intervention dates
 covariates <- read.csv("data_wpro/interventions.csv", 
@@ -71,7 +72,7 @@ for(ii in 1:nCountries) {
     data_country_forecast <- CountryForecast(ii,country,dates[[ii]],forecast,prediction,
       estimated.deaths)
     
-    make_single_plot(data_country, data_country_forecast, filename,
+    make_single_plot(data_country, data_country_forecast, filename, figuresDir,
       country, logy = FALSE, ymax = round(max(data_country$deaths), digits = -1))
 
 }

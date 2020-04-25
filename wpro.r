@@ -346,6 +346,8 @@ save(fit,out,prediction,dates,reported_cases,deaths_by_country,countries,
   file=paste0(resultsDir, StanModel,'-',JOBID,'-stanfit.Rdata'))
 
 # Visualize results -------------------------------------------------------
+# Run wrpo-results.r script
+
 # library(bayesplot)
 # filename <- paste0(StanModel,'-',JOBID)
 # system(paste0("Rscript covariate-size-effects.r ", filename,
