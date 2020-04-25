@@ -16,7 +16,7 @@ library(ggplot2)
 
 source("utils/geom-stepribbon.r")
 #---------------------------------------------------------------------------
-make_three_panel_plot <- function(resultsFile){
+make_three_panel_plot <- function(resultsFile, resultsDir, figuresDir){
   
   # args <- commandArgs(trailingOnly = TRUE)
   # if (length(args)==1){
@@ -28,7 +28,7 @@ make_three_panel_plot <- function(resultsFile){
   # }
   filename2 = resultsFile
   percent_pop = FALSE
-  load(paste0("results/", filename2))
+  load(paste0(resultsDir, filename2))
   print(sprintf("loading: %s",paste0("results/",filename2)))
   
   # Sort out intervention dates
@@ -275,52 +275,52 @@ make_plots <- function(data_country, covariates_country_long,
   }
   
   # Special plot settings for mobile
-  p3_mobile <- p3  +
-    theme(legend.position="below")
+  # p3_mobile <- p3  +
+  #   theme(legend.position="below")
   
   # Plots for Web, Desktop version
-  dir.create("web/figures/desktop/", showWarnings = FALSE, recursive = TRUE)
-  save_plot(filename = paste0("web/figures/desktop/", country, "_infections", ".svg"), 
-    p1, base_height = 4, base_asp = 1.618)
-  save_plot(filename = paste0("web/figures/desktop/", country, "_deaths", ".svg"), 
-    p2, base_height = 4, base_asp = 1.618)
-  save_plot(filename = paste0("web/figures/desktop/", country, "_rt", ".svg"), 
-    p3, base_height = 4, base_asp = 1.618 * 2)
-  
+  # dir.create("web/figures/desktop/", showWarnings = FALSE, recursive = TRUE)
+  # save_plot(filename = paste0("web/figures/desktop/", country, "_infections", ".svg"), 
+  #   p1, base_height = 4, base_asp = 1.618)
+  # save_plot(filename = paste0("web/figures/desktop/", country, "_deaths", ".svg"), 
+  #   p2, base_height = 4, base_asp = 1.618)
+  # save_plot(filename = paste0("web/figures/desktop/", country, "_rt", ".svg"), 
+  #   p3, base_height = 4, base_asp = 1.618 * 2)
+  # 
   # Plots for Web, Mobile version
-  dir.create("web/figures/mobile/", showWarnings = FALSE, recursive = TRUE)
-  save_plot(filename = paste0("web/figures/mobile/", country, "_infections", ".svg"), 
-    p1, base_height = 4, base_asp = 1.1)
-  save_plot(filename = paste0("web/figures/mobile/", country, "_deaths", ".svg"), 
-    p2, base_height = 4, base_asp = 1.1)
-  save_plot(filename = paste0("web/figures/mobile/", country, "_rt", ".svg"), 
-    p3_mobile, base_height = 4, base_asp = 1.1)
+  # dir.create("web/figures/mobile/", showWarnings = FALSE, recursive = TRUE)
+  # save_plot(filename = paste0("web/figures/mobile/", country, "_infections", ".svg"), 
+  #   p1, base_height = 4, base_asp = 1.1)
+  # save_plot(filename = paste0("web/figures/mobile/", country, "_deaths", ".svg"), 
+  #   p2, base_height = 4, base_asp = 1.1)
+  # save_plot(filename = paste0("web/figures/mobile/", country, "_rt", ".svg"), 
+  #   p3_mobile, base_height = 4, base_asp = 1.1)
   
   # Special plot settings for mobile
-  p3_mobile <- p3  +
-    theme(legend.position="below")
-  
-  # Plots for Web, Desktop version
-  dir.create("web/figures/desktop/", showWarnings = FALSE, recursive = TRUE)
-  save_plot(filename = paste0("web/figures/desktop/", country, "_infections", ".svg"), 
-    p1, base_height = 4, base_asp = 1.618)
-  save_plot(filename = paste0("web/figures/desktop/", country, "_deaths", ".svg"), 
-    p2, base_height = 4, base_asp = 1.618)
-  save_plot(filename = paste0("web/figures/desktop/", country, "_rt", ".svg"), 
-    p3, base_height = 4, base_asp = 1.618 * 2)
-  
-  # Plots for Web, Mobile version
-  dir.create("web/figures/mobile/", showWarnings = FALSE, recursive = TRUE)
-  save_plot(filename = paste0("web/figures/mobile/", country, "_infections", ".svg"), 
-    p1, base_height = 4, base_asp = 1.1)
-  save_plot(filename = paste0("web/figures/mobile/", country, "_deaths", ".svg"), 
-    p2, base_height = 4, base_asp = 1.1)
-  save_plot(filename = paste0("web/figures/mobile/", country, "_rt", ".svg"), 
-    p3_mobile, base_height = 4, base_asp = 1.1)
-  
+  # p3_mobile <- p3  +
+  #   theme(legend.position="below")
+  # 
+  # # Plots for Web, Desktop version
+  # dir.create("web/figures/desktop/", showWarnings = FALSE, recursive = TRUE)
+  # save_plot(filename = paste0("web/figures/desktop/", country, "_infections", ".svg"), 
+  #   p1, base_height = 4, base_asp = 1.618)
+  # save_plot(filename = paste0("web/figures/desktop/", country, "_deaths", ".svg"), 
+  #   p2, base_height = 4, base_asp = 1.618)
+  # save_plot(filename = paste0("web/figures/desktop/", country, "_rt", ".svg"), 
+  #   p3, base_height = 4, base_asp = 1.618 * 2)
+  # 
+  # # Plots for Web, Mobile version
+  # dir.create("web/figures/mobile/", showWarnings = FALSE, recursive = TRUE)
+  # save_plot(filename = paste0("web/figures/mobile/", country, "_infections", ".svg"), 
+  #   p1, base_height = 4, base_asp = 1.1)
+  # save_plot(filename = paste0("web/figures/mobile/", country, "_deaths", ".svg"), 
+  #   p2, base_height = 4, base_asp = 1.1)
+  # save_plot(filename = paste0("web/figures/mobile/", country, "_rt", ".svg"), 
+  #   p3_mobile, base_height = 4, base_asp = 1.1)
+  # 
   p <- plot_grid(p1, p2, p3, ncol = 3, rel_widths = c(1, 1, 2))
  
-  save_plot(filename = paste0("figures/", country, "_three_panel_", filename2, ".png"), 
+  save_plot(filename = paste0(figuresDir, country, "_three_panel_", filename2, ".png"), 
     p, base_width = 14)
 }
 

@@ -71,9 +71,12 @@ if(DEBUG) {
 d=readRDS('data_wpro/COVID-19-up-to-date.rds')
 
 ## Ensure that output directories exist
-dir.create("results/", showWarnings = FALSE, recursive = TRUE)
-dir.create("figures/", showWarnings = FALSE, recursive = TRUE)
-dir.create("web/", showWarnings = FALSE, recursive = TRUE)
+dateResults <- max(as.Date(d1$DateRep,format='%d/%m/%Y'))
+resultsDir <- paste0("results/DateRep-",dateResults, "/")
+figuresDir <- paste0("figures/DateRep-",dateResults, "/")
+dir.create(resultsDir, showWarnings = FALSE, recursive = TRUE)
+dir.create(figuresDir, showWarnings = FALSE, recursive = TRUE)
+#dir.create("web/", showWarnings = FALSE, recursive = TRUE)
 
 ## get IFR and population from same file
 ifr.by.country = read.csv("data_wpro/popt_ifr.csv")
@@ -83,7 +86,7 @@ ifr.by.country$country = as.character(ifr.by.country[,2])
 if (options$include_ncd) {
   ifr.by.country$ifr = ifr.by.country$ifr_NCD
 } else {
-  ifr.by.country$ifr = ifr.by.countryifr_noNCD
+  ifr.by.country$ifr = ifr.by.country$ifr_noNCD
 }
 
 if (length(countries) == 1) {
@@ -196,7 +199,7 @@ for(Country in countries) {
     d1 <- bind_rows(padded_data, d1)
   }
   index = which(d1$Cases>0)[1]
-  index1 = which(cumsum(d1$Deaths)>=10)[1] # also 5
+  index1 = which(cumsum(d1$Deaths)>10)[1] # also 5
   # Assumed day of seeding of new infections. See page 20 of report. 
   index2 = index1-30 
   
@@ -304,7 +307,8 @@ if(DEBUG) {
         `government makes any intervention`=stan_data$covariate4[1:stan_data$N[i],i],
         `lockdown`=stan_data$covariate5[1:stan_data$N[i],i],
         `social distancing encouraged`=stan_data$covariate6[1:stan_data$N[i],i]),
-      file=sprintf("results/%s-check-dates.csv",countries[i]),row.names=F)
+      file=paste0(resultsDir, countries[i], "-check-dates.csv"),row.names=F)
+      # file=sprintf("results/%s-check-dates.csv",countries[i]),row.names=F)
   }
 }
 
@@ -335,34 +339,38 @@ if(JOBID == "")
   JOBID = as.character(abs(round(rnorm(1) * 1000000)))
 print(sprintf("Jobid = %s",JOBID))
 
-save.image(paste0('results/',StanModel,'-',JOBID,'.Rdata'))
+save.image(paste0(resultsDir, StanModel,'-',JOBID,'.Rdata'))
 
 save(fit,out,prediction,dates,reported_cases,deaths_by_country,countries,
   estimated.deaths,estimated.deaths.cf,out,covariates,
-  file=paste0('results/',StanModel,'-',JOBID,'-stanfit.Rdata'))
+  file=paste0(resultsDir, StanModel,'-',JOBID,'-stanfit.Rdata'))
 
 # Visualize results -------------------------------------------------------
-library(bayesplot)
-filename <- paste0(StanModel,'-',JOBID)
-system(paste0("Rscript covariate-size-effects.r ", filename,'-stanfit.Rdata'))
-mu = (as.matrix(out$mu))
-colnames(mu) = countries
-g = (mcmc_intervals(mu,prob = .9))
-ggsave(sprintf("results/%s-mu.png",filename),g,width=4,height=6)
-tmp = lapply(1:length(countries), function(i) (out$Rt_adj[,stan_data$N[i],i]))
-Rt_adj = do.call(cbind,tmp)
-colnames(Rt_adj) = countries
-g = (mcmc_intervals(Rt_adj,prob = .9))
-ggsave(sprintf("results/%s-final-rt.png",filename),g,width=4,height=6)
+# library(bayesplot)
+# filename <- paste0(StanModel,'-',JOBID)
+# system(paste0("Rscript covariate-size-effects.r ", filename,
+#   '-stanfit.Rdata'))
+# mu = (as.matrix(out$mu))
+# colnames(mu) = countries
+# g = (mcmc_intervals(mu,prob = .9))
+# ggsave(paste0(resultsDir, filename, "-mu.png"),g,width=4,height=6)
+# # ggsave(sprintf("results/%s-mu.png",filename),g,width=4,height=6)
+# tmp = lapply(1:length(countries), function(i) (out$Rt_adj[,stan_data$N[i],i]))
+# Rt_adj = do.call(cbind,tmp)
+# colnames(Rt_adj) = countries
+# g = (mcmc_intervals(Rt_adj,prob = .9))
+# ggsave(paste0(resultsDir, filename, "-final-rt.png"),g,width=4,height=6)
+# ggsave(sprintf("results/%s-final-rt.png",filename),g,width=4,height=6)
 
 # system(paste0("Rscript plot-3-panel.r ", filename,'-stanfit.Rdata'))
-source("plot-3-panel.r")
-summaryOutput <- make_three_panel_plot(paste0(filename,'-stanfit.Rdata'))
-for (ii in 1:length(countries)) {
-  write.csv(summaryOutput[[ii]], paste0('figures/SummaryResults-',JOBID,
-    '-',countries[[ii]],'.csv'))
-}
-system(paste0("Rscript plot-forecast.r ",filename,'-stanfit.Rdata'))
+# source("plot-3-panel.r")
+# summaryOutput <- make_three_panel_plot(paste0(filename, '-stanfit.Rdata'),
+  # resultsDir, figuresDir)
+# for (ii in 1:length(countries)) {
+#   write.csv(summaryOutput[[ii]], paste0(figuresDir, 'SummaryResults-',JOBID,
+#     '-',countries[[ii]],'.csv'))
+# }
+# system(paste0("Rscript plot-forecast.r ", paste0(resultsDir, filename),'-stanfit.Rdata'))
 # system(paste0("Rscript make-table.r results/",filename,'-stanfit.Rdata'))
 # verify_result <- system(paste0("Rscript web-verify-output.r ", filename,'.Rdata'),intern=FALSE)
 # if(verify_result != 0){

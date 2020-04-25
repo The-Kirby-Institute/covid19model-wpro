@@ -26,69 +26,69 @@ library(bayesplot)
 source("utils/geom-stepribbon.r")
 
 # Fitting results ------------------------
-StanResults <- function(countries,JOBID,out) {
+StanResults <- function(countries,JOBID,out,resultsDir) {
   filename <- paste0('base-',JOBID)
-  plot_labels <- c("School Closure",
-    "Self Isolation",
-    "Public Events",
-    "First Intervention",
-    "Lockdown", 'Social distancing')
-  alpha = (as.matrix(out$alpha))
-  colnames(alpha) = plot_labels
-  g = (mcmc_intervals(alpha, prob = .9))
-  ggsave(sprintf("results/%s-covars-alpha-log.pdf",filename),g,width=4,
-    height=6)
-  g = (mcmc_intervals(alpha, prob = .9,
-    transformations = function(x) exp(-x)))
-  ggsave(sprintf("results/%s-covars-alpha.pdf",filename),g,width=4,height=6)
   mu = (as.matrix(out$mu))
   colnames(mu) = countries
   g = (mcmc_intervals(mu,prob = .9))
-  ggsave(sprintf("results/%s-covars-mu.pdf",filename),g,width=4,height=6)
-  dimensions <- dim(out$Rt)
-  Rt = (as.matrix(out$Rt[,dimensions[2],]))
-  colnames(Rt) = countries
-  g = (mcmc_intervals(Rt,prob = .9))
-  ggsave(sprintf("results/%s-covars-final-rt.pdf",filename),g,width=4,
-    height=6)
-  return(list("alpha" = alpha, "mu" = mu, "Rt" = Rt))
+  ggsave(paste0(resultsDir, filename, "-mu.png"),g,width=4,height=6)
+  # ggsave(sprintf("results/%s-mu.png",filename),g,width=4,height=6)
+  tmp = lapply(1:length(countries), function(i) (out$Rt_adj[,stan_data$N[i],i]))
+  Rt_adj = do.call(cbind,tmp)
+  colnames(Rt_adj) = countries
+  g = (mcmc_intervals(Rt_adj,prob = .9))
+  ggsave(paste0(resultsDir, filename, "-final-rt.png"),g,width=4,height=6)
+  # ggsave(sprintf("results/%s-final-rt.png",filename),g,width=4,height=6)
+  return(list("mu" = mu, "Rt_adj" = Rt_adj))
 }
 
 # Sort out covariates ----------------------------------------------------
-TidyCovariates <- function(ncountries, data_interventions) {  
-  covariates <- data_interventions[1:ncountries, c(1,2,3,4,5,6, 7, 8)]
-  covariates[is.na(covariates)] <- "31/12/2020" 
-  covariates[,2:8] <- lapply(covariates[,2:8], 
-    function(x) as.Date(x, format='%d/%m/%Y'))
+TidyCovariates <- function(ncountries, covariates) {  
+  names_covariates = c('Schools + Universities','Self-isolating if ill', 
+    'Public events', 'Lockdown', 'Social distancing encouraged')
+  covariates <- covariates %>%
+    filter((Type %in% names_covariates))
+  covariates <- covariates[,c(1,2,4)]
+  covariates <- spread(covariates, Type, Date.effective)
+  names(covariates) <- c('Country','lockdown', 'public_events', 
+    'schools_universities','self_isolating_if_ill', 
+    'social_distancing_encouraged')
+  covariates <- covariates[c('Country','schools_universities', 
+    'self_isolating_if_ill', 'public_events', 'lockdown', 
+    'social_distancing_encouraged')]
+  covariates$schools_universities <- as.Date(covariates$schools_universities, 
+    format = "%d.%m.%Y")
+  covariates$lockdown <- as.Date(covariates$lockdown, format = "%d.%m.%Y")
+  covariates$public_events <- as.Date(covariates$public_events, 
+    format = "%d.%m.%Y")
+  covariates$self_isolating_if_ill <- as.Date(covariates$self_isolating_if_ill, 
+    format = "%d.%m.%Y")
+  covariates$social_distancing_encouraged <- as.Date(covariates$social_distancing_encouraged, format = "%d.%m.%Y")
   
   return(covariates)
   
 }
 
 CountryCovariates <- function(country, covariates,rt_ui) {
-  # delete these 2 lines
-  covariates_country <- covariates[which(covariates$Country == country), 2:8]   
   
-  # Remove sport
-  covariates_country$sport = NULL 
-  covariates_country$travel_restrictions = NULL 
-  covariates_country_long <- gather(covariates_country[], key = "key", 
-    value = "value")
-  covariates_country_long$x <- rep(NULL, length(covariates_country_long$key))
-  un_dates <- unique(covariates_country_long$value)
-  
-  for (k in 1:length(un_dates)){
-    idxs <- which(covariates_country_long$value == un_dates[k])
-    max_val <- round(max(rt_ui)) + 0.3
-    for (j in idxs){
-      covariates_country_long$x[j] <- max_val
-      max_val <- max_val - 0.3
+  covariates_country <- covariates[which(covariates$Country == country), 2:6] 
+    covariates_country_long <- gather(covariates_country[], key = "key", 
+      value = "value")
+    covariates_country_long$x <- rep(NULL, length(covariates_country_long$key))
+    un_dates <- unique(covariates_country_long$value)
+    
+    for (k in 1:length(un_dates)){
+      idxs <- which(covariates_country_long$value == un_dates[k])
+      max_val <- round(max(rt_ui)) + 0.3
+      for (j in idxs){
+        covariates_country_long$x[j] <- max_val
+        max_val <- max_val - 0.3
+      }
     }
-  }
-  
-  covariates_country_long$value <- as_date(covariates_country_long$value) 
-  covariates_country_long$country <- rep(country, 
-    length(covariates_country_long$value))
+    
+    covariates_country_long$value <- as_date(covariates_country_long$value) 
+    covariates_country_long$country <- rep(country, 
+      length(covariates_country_long$value))
   
   return(covariates_country_long)
 }    
@@ -116,8 +116,8 @@ CountryOutputs <- function(index,country,dates,reported_cases,
   rt_li2 <- colQuantiles(out$Rt[,1:N,index],probs=.25)
   rt_ui2 <- colQuantiles(out$Rt[,1:N,index],probs=.75)
   
-  data_country <- data.frame("time" = as_date(as.character(dates[[index]])),
-    "country" = rep(country, length(dates[[index]])),
+  data_country <- data.frame("time" = as_date(as.character(dates)),
+    "country" = rep(country, length(dates)),
     "reported_cases" = reported_cases[[index]], 
     "reported_cases_c" = cumsum(reported_cases[[index]]), 
     "predicted_cases_c" = cumsum(predicted_cases),
@@ -180,7 +180,7 @@ CountryForecast <- function(index,country,dates,forecast,prediction,
 # Plotting functions ------------------------------------------------------
 
 make_plots <- function(data_country, covariates_country_long, 
-  filename2, country){
+  filename2, figuresDir, country){
   
   data_cases_95 <- data.frame(data_country$time, data_country$predicted_min, 
     data_country$predicted_max)
@@ -289,12 +289,12 @@ make_plots <- function(data_country, covariates_country_long,
     theme(legend.position="right")
   
   p <- plot_grid(p1, p2, p3, ncol = 3, rel_widths = c(1, 1, 2))
-  save_plot(filename = paste0("figures/", country, "_three_panel_", 
-    filename2, ".pdf"), p, base_width = 14)
+  save_plot(filename = paste0(figuresDir, country, "_three_panel_", 
+    filename2, ".png"), p, base_width = 14)
 }
 
 make_single_plot <- function(data_country, data_country_forecast, filename, 
-  country){
+  country, logy = TRUE, ymax = 100000){
   
   data_deaths <- data_country %>%
     select(time, deaths, estimated_deaths) %>%
@@ -331,16 +331,21 @@ make_single_plot <- function(data_country, data_country_forecast, filename,
     xlab("Date") +
     ylab("Daily number of deaths\n") + 
     scale_x_date(date_breaks = "weeks", labels = date_format("%e %b")) + 
-    scale_y_continuous(trans='log10', labels=comma) + 
-    coord_cartesian(ylim = c(1, 100000), expand = FALSE) + 
-    theme_pubr() + 
+    theme_pubr(base_family="sans") + 
     theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
     guides(fill=guide_legend(ncol=1, reverse = TRUE)) + 
-    annotate(geom="text", x=data_country$time[length(data_country$time)]+8, 
-      y=10000, label="Forecast",
+    annotate(geom="text", x=data_country$time[length(data_country$time)]+11,
+      y=10000, label="",
       color="black")
+  if (logy) {
+     p <- p + scale_y_continuous(trans='log10', labels=comma) +
+           coord_cartesian(ylim = c(1, ymax), expand = FALSE)
+  } else {
+    p <- p + scale_y_continuous(labels=comma) +
+      coord_cartesian(ylim = c(0, ymax), expand = TRUE)
+  }
   print(p)
-  
-  ggsave(file= paste0("figures/", country, "_forecast_", filename, ".pdf"), 
+
+  ggsave(file= paste0(figuresDir, country, "_forecast_", filename, ".png"), 
     p, width = 10)
 }
