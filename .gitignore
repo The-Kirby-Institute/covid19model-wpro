@@ -43,14 +43,18 @@ vignettes/*.pdf
 
 ## no stan rds files being dumped
 stan-models/*.rds
-results/*.Rdata
-results/*.pdf
+results/*/*.Rdata
+results/*/*.pdf
+results/*/*.png
 results/*.png
+results/*.csv
+figures/*/*.png
+figures/*/*.pdf
 figures/*.png
-figures/*.pdf
+figures/*/*.csv
 figures/*.csv
 Rplots.pdf
 web/*
-results/*.csv
+results/*/*.csv
 
 data_wpro/
