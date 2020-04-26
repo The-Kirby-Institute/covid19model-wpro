@@ -22,6 +22,7 @@ library(ggpubr)
 library(bayesplot)
 library(cowplot)
 library(bayesplot)
+library(svglite)
 
 source("utils/geom-stepribbon.r")
 

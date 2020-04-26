@@ -1,6 +1,6 @@
 ## Produce results for WPRO
 
-source("extract-results.r")
+source("utils/extract-results.r")
 
 ##JOBIDs
 dateDir <- "2020-04-24"
@@ -52,6 +52,9 @@ for(ii in 1:nCountries) {
       '-',countries[[ii]],'.csv'))
     
     country_covariates <- CountryCovariates(country, covariates,data_country$rt_max)
+    
+    write.csv(country_covariates, paste0(figuresDir, 'Interventions-',JOBID,
+      '-',countries[[ii]],'.csv'))
     
     make_plots(data_country = data_country, 
       covariates_country_long = country_covariates,
