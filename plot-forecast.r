@@ -36,6 +36,9 @@ make_forecast_plot <- function(){
     nCountries <- length(countries) 
   }
   
+  all_data <- data.frame()
+  all_data_forecast <- data.frame()
+
   # Start gathering the data 
   for(i in 1:nCountries){
     N <- length(dates[[i]])
@@ -86,17 +89,19 @@ make_forecast_plot <- function(){
     times <- as_date(as.character(dates[[i]]))
     times_forecast <- times[length(times)] + 0:10
     data_country_forecast <- data.frame("time" = times_forecast,
-      "country" = rep(country, 11),
-      "estimated_deaths_forecast" = estimated_deaths_forecast,
-      "death_min_forecast" = estimated_deaths_li_forecast,
-      "death_max_forecast"= estimated_deaths_ui_forecast)
-    
+                                        "country" = rep(country, 10),
+                                        "estimated_deaths_forecast" = estimated_deaths_forecast,
+                                        "death_min_forecast" = estimated_deaths_li_forecast,
+                                        "death_max_forecast"= estimated_deaths_ui_forecast)
+    all_data <- rbind(all_data, data_country)
+    all_data_forecast <- rbind(all_data_forecast, data_country)
     make_single_plot(data_country = data_country, 
-      data_country_forecast = data_country_forecast,
-      filename = filename,
-      country = country)
-    
+                     data_country_forecast = data_country_forecast,
+                     filename = filename,
+                     country = country)
   }
+  write.csv(all_data, paste0("results/", "base-forecast-plot.csv"))
+  write.csv(all_data_forecast, paste0("results/", "forecast-plot.csv"))
 }
 
 make_single_plot <- function(data_country, data_country_forecast, filename, country){
