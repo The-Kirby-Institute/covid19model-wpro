@@ -16,6 +16,8 @@ library(optparse)
 ## European countries. Imperial College London (30-03-2020)
 ## doi: https://doi.org/10.25561/77731.
 
+rm(list = ls()) # Don't like doing this but just in case
+
 # User Options ------------------------------------------------------------
 countries <- c(
   "Philippines",
@@ -24,7 +26,7 @@ countries <- c(
 )
 
 options <- list("include_ncd" = TRUE,
-  "npi_on" = TRUE,
+  "npi_on" = FALSE,
   "fullRun" = FALSE,
   "debug" = FALSE)
 
@@ -71,7 +73,7 @@ if(DEBUG) {
 d=readRDS('data_wpro/COVID-19-up-to-date.rds')
 
 ## Ensure that output directories exist
-dateResults <- max(as.Date(d1$DateRep,format='%d/%m/%Y'))
+dateResults <- max(as.Date(d$DateRep,format='%d/%m/%Y'))
 resultsDir <- paste0("results/DateRep-",dateResults, "/")
 figuresDir <- paste0("figures/DateRep-",dateResults, "/")
 dir.create(resultsDir, showWarnings = FALSE, recursive = TRUE)
@@ -294,6 +296,7 @@ if (options$npi_on) {
   stan_data$covariate3 = 0 * stan_data$covariate3
   stan_data$covariate4 = 0 * stan_data$covariate4
   stan_data$covariate5 = 0 * stan_data$covariate5
+  stan_data$covariate6 = 0 * stan_data$covariate6
 }
 
 # Check NPI dates
@@ -339,14 +342,14 @@ if(JOBID == "")
   JOBID = as.character(abs(round(rnorm(1) * 1000000)))
 print(sprintf("Jobid = %s",JOBID))
 
-save.image(paste0(resultsDir, StanModel,'-',JOBID,'.Rdata'))
+save.image(paste0(resultsDir, StanModel,'-',JOBID,'.Rdata')) # don't like this
 
 save(fit,out,prediction,dates,reported_cases,deaths_by_country,countries,
-  estimated.deaths,estimated.deaths.cf,out,covariates,
+  estimated.deaths,estimated.deaths.cf,out,covariates, options,stan_data,
   file=paste0(resultsDir, StanModel,'-',JOBID,'-stanfit.Rdata'))
 
 # Visualize results -------------------------------------------------------
-# Run wrpo-results.r script
+print("To visualize results run code in wrpo-results.r script")
 
 # library(bayesplot)
 # filename <- paste0(StanModel,'-',JOBID)
