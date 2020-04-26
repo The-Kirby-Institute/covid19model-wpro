@@ -4,7 +4,7 @@ source("extract-results.r")
 
 ##JOBIDs
 dateDir <- "2020-04-24"
-JOBID <- "1117069"
+JOBID <- "71697"
 # PHL-MYS <- "1117069" # Quick
 # no_NPIs <- "36285"" # Quick
 
