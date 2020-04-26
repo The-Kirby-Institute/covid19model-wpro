@@ -7,9 +7,6 @@ library(tidyr)
 library(EnvStats) # For gammaAlt functions
 library(optparse)
 
-source('utils/read-data.r')
-source('utils/process-covariates.r')
-
 ## Code addapted to handle Western Pacific countries for WHO Regional 
 ## Office (WPRO). Additional comments added to translate methods from 
 ## Imperial report:
@@ -19,7 +16,10 @@ source('utils/process-covariates.r')
 ## European countries. Imperial College London (30-03-2020)
 ## doi: https://doi.org/10.25561/77731.
 
-rm(list = ls()) # Don't like doing this but just in case
+# rm(list = ls()) # Don't like doing this but just in case # Restart R
+
+source('utils/read-data.r')
+source('utils/process-covariates.r')
 
 # User Options ------------------------------------------------------------
 options <- list("include_ncd" = TRUE,
@@ -68,7 +68,7 @@ if(DEBUG) {
 
 ## Reading all data -------------------------------------------------------
 # Read which countires to use
-countries <- read.csv('data_wpro/regions.csv', stringsAsFactors = FALSE)
+countries <- read.csv('data/regions.csv', stringsAsFactors = FALSE)
 # Read deaths data for regions
 d <- read_obs_data(countries)
 # Read ifr 
@@ -85,7 +85,6 @@ dir.create(resultsDir, showWarnings = FALSE, recursive = TRUE)
 dir.create(figuresDir, showWarnings = FALSE, recursive = TRUE)
 #dir.create("web/", showWarnings = FALSE, recursive = TRUE)
 #dir.create("web/data", showWarnings = FALSE, recursive = TRUE)
-
 
 N2 = 100 # increase if you need more forecast
 
@@ -131,7 +130,7 @@ print(sprintf("Jobid = %s",JOBID))
 countries <- countries$Regions
 save.image(paste0(resultsDir, StanModel,'-',JOBID,'.Rdata')) # don't like this
 save(fit,out,prediction,dates,reported_cases,deaths_by_country,countries,
-  estimated.deaths,estimated.deaths.cf,out,covariates, options,stan_data,
+  estimated.deaths,estimated.deaths.cf,out,options,stan_data,
   file=paste0(resultsDir, StanModel,'-',JOBID,'-stanfit.Rdata'))
 
 # Visualize results -------------------------------------------------------

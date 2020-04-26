@@ -32,7 +32,7 @@ make_three_panel_plot <- function(resultsFile, resultsDir, figuresDir){
   print(sprintf("loading: %s",paste0("results/",filename2)))
   
   # Sort out intervention dates
-  covariates = read.csv('data_wpro/interventions.csv', stringsAsFactors = FALSE)
+  covariates = read.csv('data/interventions.csv', stringsAsFactors = FALSE)
   # data_interventions <- read.csv("data_wpro/interventions.csv", 
   #   stringsAsFactors = FALSE)
   # covariates <- data_interventions[1:length(countries), c(1,2,3,4,5,6, 7, 8)]

@@ -4,7 +4,7 @@ source("extract-results.r")
 
 ##JOBIDs
 dateDir <- "2020-04-24"
-JOBID <- "71697"
+JOBID <- "928744"
 # PHL-MYS <- "1117069" # Quick
 # no_NPIs <- "36285"" # Quick
 
@@ -26,7 +26,7 @@ plot_covariate_effects(resultsDir, out)
 predictionR0 <- resultsR0(stan_data, out)
 
 # Sort out intervention dates
-covariates <- read.csv("data_wpro/interventions.csv", 
+covariates <- read.csv("data/interventions.csv", 
   stringsAsFactors = FALSE)
 
 if ((length(countries) == 2) & (countries[1] == countries[2])) {
@@ -87,10 +87,10 @@ for(ii in 1:nCountries) {
   
   forecastR0[[ii]] <- CountryForecastR0(ii,country,dates[[ii]],forecast,predictionR0)
   
-  data_countryTest <- CountryOutputs(2,country,dates[[2]],reported_cases,
+  data_countryTest <- CountryOutputs(ii,country,dates[[ii]],reported_cases,
     deaths_by_country,prediction,estimated.deaths,out$Rt)
   
-  data_country_forecastTest <- CountryForecast(2,country,dates[[2]],forecast,prediction,
+  data_country_forecastTest <- CountryForecast(ii,country,dates[[ii]],forecast,prediction,
     estimated.deaths)
   
   make_comparison_plot(data_countryTest, data_country_forecastTest, 

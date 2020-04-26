@@ -44,9 +44,9 @@ StanResults <- function(countries,JOBID,out,resultsDir) {
 
 ## Impact no NPIs -predictions if R0 stays at original value
 resultsR0 <- function(stanData, stanOut) {
-  
-  infections <- array(rep(0, 100*stanData$N2*stanData$M), 
-    c(100, stanData$N2, stanData$M)) 
+  stanruns <- nrow(out$mu)
+  infections <- array(rep(0, stanruns*stanData$N2*stanData$M), 
+    c(stanruns, stanData$N2, stanData$M)) 
   cummInfects <- infections
   y <- stanOut$prediction[,1,]
   
@@ -57,22 +57,20 @@ resultsR0 <- function(stanData, stanOut) {
     }
     
     for (jj in (stanData$N0+1):stanData$N2) {
-      convolution0 <- rep(0, 100)
+      convolution0 <- rep(0, stanruns)
       for(kk in 1:(jj-1)) {
         convolution0 <- convolution0 + infections[,kk,ii] * 
           stanData$SI[jj-kk]; 
       }
       cummInfects[,jj,ii] = cummInfects[,jj-1,ii] + infections[,jj-1,ii]; 
-      infections[,jj,ii] =  ((stanData$pop[ii]-cummInfects[,jj,ii]) / stanData$pop[ii]) * 
-        stanOut$mu[,ii] * convolution0;
+      infections[,jj,ii] =  ((stanData$pop[ii]-cummInfects[,jj,ii]) / 
+          stanData$pop[ii]) * stanOut$mu[,ii] * convolution0;
     }
   }
   
   return(infections)
   
 }
-
-
 
 # Sort out covariates ----------------------------------------------------
 TidyCovariates <- function(ncountries, covariates) {  
