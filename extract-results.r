@@ -42,6 +42,38 @@ StanResults <- function(countries,JOBID,out,resultsDir) {
   return(list("mu" = mu, "Rt_adj" = Rt_adj))
 }
 
+## Impact no NPIs -predictions if R0 stays at original value
+resultsR0 <- function(stanData, stanOut) {
+  
+  infections <- array(rep(0, 100*stanData$N2*stanData$M), 
+    c(100, stanData$N2, stanData$M)) 
+  cummInfects <- infections
+  y <- stanOut$prediction[,1,]
+  
+  for (ii in 1:stanData$M) {
+    for (jj in 2:stanData$N0){
+      cummInfects[,jj,ii] <- cummInfects[,jj-1,ii] + y[,ii]; 
+      infections[,jj,ii] <- y[,ii]
+    }
+    
+    for (jj in (stanData$N0+1):stanData$N2) {
+      convolution0 <- rep(0, 100)
+      for(kk in 1:(jj-1)) {
+        convolution0 <- convolution0 + infections[,kk,ii] * 
+          stanData$SI[jj-kk]; 
+      }
+      cummInfects[,jj,ii] = cummInfects[,jj-1,ii] + infections[,jj-1,ii]; 
+      infections[,jj,ii] =  ((stanData$pop[ii]-cummInfects[,jj,ii]) / stanData$pop[ii]) * 
+        stanOut$mu[,ii] * convolution0;
+    }
+  }
+  
+  return(infections)
+  
+}
+
+
+
 # Sort out covariates ----------------------------------------------------
 TidyCovariates <- function(ncountries, covariates) {  
   names_covariates = c('Schools + Universities','Self-isolating if ill', 
@@ -169,11 +201,46 @@ CountryForecast <- function(index,country,dates,forecast,prediction,
   times_forecast <- times[length(times)] + 0:forecast
   data_country_forecast <- data.frame("time" = times_forecast,
     "country" = rep(country, forecast+1),
+    "predicted_cases_forecast" = predicted_cases_forecast,
+    "predicted_min_forecast" = predicted_cases_li_forecast,
+    "predicted_max_forecast"= predicted_cases_ui_forecast,
     "estimated_deaths_forecast" = estimated_deaths_forecast,
     "death_min_forecast" = estimated_deaths_li_forecast,
     "death_max_forecast"= estimated_deaths_ui_forecast)
   
   return(data_country_forecast)
+  
+}
+
+CountryForecastR0 <- function(index,country,dates,forecast,predictionR0) {
+  
+  N <- length(dates)
+  N2 <- N + forecast
+  
+  predicted_cases <- colMeans(predictionR0[,1:N2,index])
+  predicted_cases_li <- colQuantiles(predictionR0[,1:N2,index], 
+    probs=.025)
+  predicted_cases_ui <- colQuantiles(predictionR0[,1:N2,index], 
+    probs=.975)
+  predicted_cases_li2 <- colQuantiles(predictionR0[,1:N2,index], 
+    probs=.25)
+  predicted_cases_ui2 <- colQuantiles(predictionR0[,1:N2,index], 
+    probs=.75)
+  
+  times <- as_date(as.character(dates))
+  times_forecast <- c(times, times[length(times)] + 1:forecast)
+  data_country_R0 <- data.frame("time" = times_forecast,
+    "country" = rep(country, length(times_forecast)),
+    "predicted_cases_c" = cumsum(predicted_cases),
+    "predicted_min_c" = cumsum(predicted_cases_li),
+    "predicted_max_c" = cumsum(predicted_cases_ui),
+    "predicted_cases" = predicted_cases,
+    "predicted_min" = predicted_cases_li,
+    "predicted_max" = predicted_cases_ui,
+    "predicted_min2" = predicted_cases_li2,
+    "predicted_max2" = predicted_cases_ui2)
+  
+  return(data_country_R0)
   
 }
 
@@ -296,18 +363,18 @@ make_plots <- function(data_country, covariates_country_long,
 make_single_plot <- function(data_country, data_country_forecast, filename,
   figuresDir, country, logy = TRUE, ymax = 100000){
   
-  data_deaths <- data_country %>%
-    select(time, deaths, estimated_deaths) %>%
-    gather("key" = key, "value" = value, -time)
-  
-  data_deaths_forecast <- data_country_forecast %>%
-    select(time, estimated_deaths_forecast) %>%
-    gather("key" = key, "value" = value, -time)
-  
-  # Force less than 1 case to zero
-  data_deaths$value[data_deaths$value < 1] <- NA
-  data_deaths_forecast$value[data_deaths_forecast$value < 1] <- NA
-  data_deaths_all <- rbind(data_deaths, data_deaths_forecast)
+  # data_deaths <- data_country %>%
+  #   select(time, deaths, estimated_deaths) %>%
+  #   gather("key" = key, "value" = value, -time)
+  # 
+  # data_deaths_forecast <- data_country_forecast %>%
+  #   select(time, estimated_deaths_forecast) %>%
+  #   gather("key" = key, "value" = value, -time)
+  # 
+  # # Force less than 1 case to zero
+  # data_deaths$value[data_deaths$value < 1] <- NA
+  # data_deaths_forecast$value[data_deaths_forecast$value < 1] <- NA
+  # data_deaths_all <- rbind(data_deaths, data_deaths_forecast)
   
   p <- ggplot(data_country) +
     geom_bar(data = data_country, aes(x = time, y = deaths), 
@@ -326,7 +393,7 @@ make_single_plot <- function(data_country, data_country_forecast, filename,
         ymin = death_min_forecast, 
         ymax = death_max_forecast),
       fill = "black", alpha=0.35) +
-    geom_vline(xintercept = data_deaths$time[length(data_deaths$time)], 
+    geom_vline(xintercept = data_country$time[length(data_country$time)], 
       col = "black", linetype = "dashed", alpha = 0.5) + 
     xlab("Date") +
     ylab("Daily number of deaths\n") + 
@@ -349,6 +416,63 @@ make_single_plot <- function(data_country, data_country_forecast, filename,
   ggsave(file= paste0(figuresDir, country, "_forecast_", filename, ".png"), 
     p, width = 10)
 }
+
+make_comparison_plot <- function(data_country, data_country_forecast, 
+  data_country_R0, filename2, figuresDir, country, 
+  logy = TRUE, ymax = 10e6, include_cases = TRUE) {
+  
+  # Remove first zero entry
+  data_country_R0[1,2:ncol(data_country_R0)] <- 
+    data_country_R0[2,2:ncol(data_country_R0)]
+  
+  p <- ggplot(data_country) +
+    geom_ribbon(data = data_country, aes(x = time, ymin = predicted_min, 
+      ymax = predicted_max), fill = "deepskyblue4", alpha=0.35) +
+    geom_line(data = data_country, aes(x = time, y = predicted_cases), 
+      col = "deepskyblue4") + 
+    geom_ribbon(data = data_country_forecast, aes(x = time, 
+      ymin = predicted_min_forecast, ymax = predicted_max_forecast), 
+      fill = "deepskyblue4", alpha=0.35) +
+    geom_line(data = data_country_forecast, aes(x = time, 
+      y = predicted_cases_forecast), col = "deepskyblue4") + 
+    geom_ribbon(data = data_country_R0, aes(x = time, 
+      ymin = predicted_min, ymax = predicted_max), 
+      fill = "black", alpha=0.35) +
+    geom_line(data = data_country_R0, aes(x = time, 
+      y = predicted_cases), col = "black") +
+    geom_vline(xintercept = data_country$time[length(data_country$time)], 
+      col = "black", linetype = "dashed", alpha = 0.5) + 
+    xlab("Date") +
+    ylab("Daily number of infectons\n") + 
+    scale_x_date(date_breaks = "weeks", labels = date_format("%e %b")) + 
+    theme_pubr(base_family="sans") + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) # +
+  # guides(fill=guide_legend(ncol=1, reverse = TRUE)) + 
+  # annotate(geom="text", x=data_country$time[length(data_country$time)]+11,
+  # y=10000, label="",
+  # color="black")
+  if (include_cases) {
+    p <- p + geom_bar(data = data_country, aes(x = time, y = reported_cases), 
+      fill = "coral4", stat='identity', alpha=0.5)
+  }
+  
+  if (logy) {
+    p <- p + scale_y_continuous(trans='log10', labels=comma) +
+      coord_cartesian(ylim = c(1, ymax), expand = FALSE)
+    fileTag <- "_R0_log_"
+  } else {
+    p <- p + scale_y_continuous(labels=comma) +
+      coord_cartesian(ylim = c(0, ymax), expand = TRUE)
+    fileTag <- "_R0_linear_"
+  }
+  
+  print(p)
+  
+  ggsave(file= paste0(figuresDir, country, fileTag, filename, ".png"), 
+    p, width = 10)
+  
+}
+
 
 plot_covariate_effects <- function(resultsDir, out) {
   
@@ -410,7 +534,7 @@ plot_covariate_effects <- function(resultsDir, out) {
       position = position_dodge(-.5)) + 
     scale_x_continuous(breaks=seq(0,1,.25),
       labels = c("0%\n(no effect on transmissibility)",
-      "25%","50%","75%","100%\n(ends transmissibility)"),
+        "25%","50%","75%","100%\n(ends transmissibility)"),
       expand=c(0.005,0.005),expression(paste("Relative % reduction in  ",R[t])))  +
     scale_colour_manual(name = "", #labels = c("50%", "95%"),
       values = c(("coral4"), ("seagreen"))) + 
