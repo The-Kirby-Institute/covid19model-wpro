@@ -1,14 +1,14 @@
 Country,Type,Event,Date effective,Link
-Philippines,Schools + Universities,,13.03.2020,
-Philippines,Public events,,13.03.2020,
-Philippines,Lockdown,,17.03.2020,
-Philippines,Social distancing encouraged,,2.03.2020,
-Philippines,Self-isolating if ill,,2.03.2020,
-Malaysia,Schools + Universities,,18.03.2020,
-Malaysia,Public events,,7.03.2020,
-Malaysia,Lockdown,,31.12.2020,
-Malaysia,Social distancing encouraged,,18.03.2020,
-Malaysia,Self-isolating if ill,,30.01.2020,
+Philippines,Schools + Universities,,13.03.2020,Oxford: Required general closing of schools
+Philippines,Public events,,13.03.2020,Oxford: Required general cancelling of public events
+Philippines,Lockdown,,17.03.2020,"Date of lockdown from in-country people, media. Oxford: Targeted restricted movement"
+Philippines,Social distancing encouraged,,2.03.2020,Oxford: Generally restricted movement
+Philippines,Self-isolating if ill,,2.03.2020,Oxford: Quarantine on high-risk regions for international travellers + Generally restricted movement
+Malaysia,Schools + Universities,,18.03.2020,Oxford: Required general closing of schools
+Malaysia,Public events,,12.03.2020,Oxford: Required targeted cancelling of public events; Alternative: Recommended cancelling of public events on 7-Mar-2020
+Malaysia,Lockdown,,18.03.2020,Oxford: Required general closing of workplaces + Required general closing of schools
+Malaysia,Social distancing encouraged,,18.03.2020,Oxford: Generally restricted movement (assuming this will lead to less movement)
+Malaysia,Self-isolating if ill,,30.01.2020,Oxford: Ban on high-risk regions for international travelers. Not sure this aligns well wih category. Might be too early to detect effect. 
 Laos,Schools + Universities,,,
 Laos,Public events,,,
 Laos,Lockdown,,,

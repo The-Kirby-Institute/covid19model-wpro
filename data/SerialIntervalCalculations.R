@@ -19,12 +19,14 @@
 # standard deviation 2.1 days
 
 mean <- 5.5
-media <- 5.2
+median <- 5.2
 sd <- 2.1
 
 # Test function
 stats <- function(vector) {
- return(list(mean = mean(vector), median = median(vector), sd= sd(vector)))
+ return(list(mean = mean(vector), median = median(vector), sd= sd(vector),
+   iqrl = quantile(vector, probs = 0.25), 
+   iqru = quantile(vector, probs = 0.75)))
 }
 
 # Fitting gamma to mean and variance of the serial interval
@@ -56,24 +58,34 @@ stats(testWeibull)
 plot(siWeibull$fit[1:20])
 
 # Original Imperial serial interval parameters --------------
-# Not sure from report either shape = 6.5 and scale = 0.62 or
-# Mean = 6.5 and variance = 0.62??
+# Mean = 6.5 and cv = 0.62 and the gammAlt functions for the EnvStats
+# Package 
 
-ImperialParams$shape <- 6.5
-ImperialParams$scale <- 0.62
+library(EnvStats)
+
+ImperialShape <- 6.5
+Imperialcv <- 0.62
 
 siImperialGamma <- data.frame(x = 1:100,
-  fit = dgamma(1:100, ImperialParams$shape, scale = ImperialParams$scale))
+  fit = dgammaAlt(1:100, ImperialShape, cv = Imperialcv))
 
-testImperialGamma <- rgamma(1e5, ImperialParams$shape, scale = ImperialParams$scale)
+testImperialGamma <- rgammaAlt(1e5, ImperialShape, cv = Imperialcv)
 stats(testImperialGamma)
 plot(siImperialGamma$fit[1:20])
 
 # Original fit
-serial.interval <- read.csv("serial_interval.csv")
-plot(serial.interval$fit[1:20])
+# serial.interval <- read.csv("serial_interval.csv")
+serial.interval.orig <- read.csv("serial_interval_Original.csv")
+plot(serial.interval.orig$fit[1:20])
 
 # Final Serial.Interval selected
-# Going with the gamma fit (replace serial_interval.csv with the new file)
-write.csv(siGamma, "serial_interval_Update.csv")
+# Originally went with the gamma fit but more recent serial interval data
+# suggests a lower mean. Serial interval Distribution from WHO update 
+# 15 April: 4.8 (IQR: 3.7 – 5.2) from 8 studies. Upper IQR seems a bit tight
+# though. In version 1 of the Imperial model this produced
+# a reaseonable R0 but version 2 and above seemed to result in an R0 > 3.
+# Weibull distribution seems to be a better fit now. 
 
+# Going with the Weibull(replace serial_interval.csv with the new file)
+write.csv(siGamma, "serial_interval_Gamma.csv")
+write.csv(siWeibull, "serial_interval_Weibull.csv")
