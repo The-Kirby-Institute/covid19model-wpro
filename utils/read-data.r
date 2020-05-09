@@ -23,11 +23,6 @@ read_ifr_data <- function(){
     ifr.by.country$ifr = ifr.by.country$ifr_noNCD
   }
   
-  if (length(countries) == 1) {
-    ifr.by.country = ifr.by.country[ifr.by.country$country == countries[1],]
-    ifr.by.country = rbind(ifr.by.country,ifr.by.country)
-  }
-  
   return(ifr.by.country)
   
 }
