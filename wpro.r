@@ -5,7 +5,7 @@ library(gdata)
 library(dplyr)
 library(tidyr)
 library(EnvStats) # For gammaAlt functions
-library(optparse)
+# library(optparse)
 
 ## Code addapted to handle Western Pacific countries for WHO Regional 
 ## Office (WPRO). Additional comments added to translate methods from 
@@ -16,7 +16,7 @@ library(optparse)
 ## European countries. Imperial College London (30-03-2020)
 ## doi: https://doi.org/10.25561/77731.
 
-# rm(list = ls()) # Don't like doing this but just in case # Restart R
+rm(list = ls()) # Don't like doing this but just in case # Restart R
 
 source('utils/read-data.r')
 source('utils/process-covariates.r')
@@ -25,40 +25,20 @@ source('utils/process-covariates.r')
 options <- list("include_ncd" = TRUE,
   "npi_on" = TRUE,
   "fullRun" = FALSE,
-  "debug" = FALSE)
+  "debug" = FALSE,
+  "model" = "base_wpro",
+  "useJHU" = TRUE,
+  "EndDate" = NULL) # EndDated default = NULL
 
-# Commandline options and parsing
-parser <- OptionParser()
-parser <- add_option(parser, c("-D", "--debug"), action="store_true",
-  help="Perform a debug run of the model")
-parser <- add_option(parser, c("-F", "--full"), action="store_true",
-  help="Perform a full run of the model")
-cmdoptions <- parse_args(parser, args = commandArgs(trailingOnly = TRUE), 
-  positional_arguments = TRUE)
+DEBUG <- options$debug
 
-# Default run parameters for the model
-if(is.null(cmdoptions$options$debug) || options$debug) {
-  DEBUG = Sys.getenv("DEBUG") == "TRUE"
-} else {
-  DEBUG = cmdoptions$options$debug
-}
-
-if(is.null(cmdoptions$options$full) || options$fullRun) {
-  FULL = Sys.getenv("FULL") == "TRUE"
-} else {
-  FULL = cmdoptions$options$full
-}
+FULL <- options$fullRun
 
 if(DEBUG && FULL) {
   stop("Setting both debug and full run modes at once is invalid")
 }
 
-if(length(cmdoptions$args) == 0) {
-  StanModel = 'base'
-} else {
-  StanModel = cmdoptions$args[1]
-}
-
+StanModel <- options$model
 print(sprintf("Running %s",StanModel))
 if(DEBUG) {
   print("Running in DEBUG mode")
@@ -71,6 +51,23 @@ if(DEBUG) {
 countries <- read.csv('data/regions.csv', stringsAsFactors = FALSE)
 # Read deaths data for regions
 d <- read_obs_data(countries)
+if (options$useJHU) {
+  d_jhu <- readRDS('data/COVID-19-up-to-date_JHU.rds') %>%
+    select(DateRep, Cases, Deaths, Country) %>%
+    filter(Country %in% countries$Regions, DateRep >= "2020-01-23") %>%
+    mutate(Country = as.character(Country))
+  
+  d <- filter(d, DateRep <= "2020-01-22") %>%
+    bind_rows(d_jhu) %>%
+    arrange(Country, DateRep)
+  d$Deaths[d$Deaths < 0] <- 0
+  
+}
+
+if (!is.null(options$EndDate[1])) {
+  d <- filter(d, DateRep <= options$EndDate)
+}
+
 # Read ifr 
 ifr.by.country <- read_ifr_data()
 
@@ -83,15 +80,8 @@ resultsDir <- paste0("results/DateRep-",dateResults, "/")
 figuresDir <- paste0("figures/DateRep-",dateResults, "/")
 dir.create(resultsDir, showWarnings = FALSE, recursive = TRUE)
 dir.create(figuresDir, showWarnings = FALSE, recursive = TRUE)
-#dir.create("web/", showWarnings = FALSE, recursive = TRUE)
-#dir.create("web/data", showWarnings = FALSE, recursive = TRUE)
 
 N2 = 100 # increase if you need more forecast
-
-# Hack to handle one country
-if (length(countries) == 1) {
-  countries <- c(countries[1], countries[1])
-}
 
 # Initialize inputs ------------------------------------------------------
 processed_data <- process_covariates(countries = countries, 
@@ -111,9 +101,11 @@ m = stan_model(paste0('stan-models/',StanModel,'.stan'))
 if(DEBUG) {
   fit = sampling(m,data=stan_data,iter=40,warmup=20,chains=2)
 } else if (FULL) {
-  fit = sampling(m,data=stan_data,iter=1800,warmup=1000,chains=5,thin=1,control = list(adapt_delta = 0.95, max_treedepth = 15))
+  fit = sampling(m,data=stan_data,iter=1800,warmup=1000,chains=5,thin=1,
+    control = list(adapt_delta = 0.95, max_treedepth = 15))
 } else { 
-  fit = sampling(m,data=stan_data,iter=1000,warmup=500,chains=4,thin=1,control = list(adapt_delta = 0.95, max_treedepth = 10))
+  fit = sampling(m,data=stan_data,iter=1000,warmup=500,chains=4,thin=1,
+    control = list(adapt_delta = 0.95, max_treedepth = 10))
 }    
 
 # Extract outputs and save results ----------------------------------------
