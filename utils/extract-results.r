@@ -19,10 +19,9 @@ library(matrixStats)
 library(scales)
 library(gridExtra)
 library(ggpubr)
-library(bayesplot)
 library(cowplot)
 library(bayesplot)
-library(svglite)
+# library(svglite)
 
 source("utils/geom-stepribbon.r")
 
@@ -45,13 +44,17 @@ StanResults <- function(countries,JOBID,out,resultsDir) {
 
 ## Impact no NPIs -predictions if R0 stays at original value
 resultsR0 <- function(stanData, stanOut) {
-  stanruns <- nrow(out$mu)
+  stanruns <- nrow(stanOut$mu)
+  
   infections <- array(rep(0, stanruns*stanData$N2*stanData$M), 
     c(stanruns, stanData$N2, stanData$M)) 
   cummInfects <- infections
+  deaths <- infections
   y <- stanOut$prediction[,1,]
   
   for (ii in 1:stanData$M) {
+    population <- rep(stanData$pop[ii], stanruns)
+    infections[,1,ii] <- y[,ii]
     for (jj in 2:stanData$N0){
       cummInfects[,jj,ii] <- cummInfects[,jj-1,ii] + y[,ii]; 
       infections[,jj,ii] <- y[,ii]
@@ -63,14 +66,23 @@ resultsR0 <- function(stanData, stanOut) {
         convolution0 <- convolution0 + infections[,kk,ii] * 
           stanData$SI[jj-kk]; 
       }
-      cummInfects[,jj,ii] = cummInfects[,jj-1,ii] + infections[,jj-1,ii]; 
-      infections[,jj,ii] =  ((stanData$pop[ii]-cummInfects[,jj,ii]) / 
-          stanData$pop[ii]) * stanOut$mu[,ii] * convolution0;
+      infections[,jj,ii] =  ((population[ii]-cummInfects[,jj-1,ii]) / 
+          population[ii]) * stanOut$mu[,ii] * convolution0;
+      
+      cummInfects[,jj,ii] = cummInfects[,jj-1,ii] + infections[,jj,ii]; 
+
+    }
+  
+    deaths[,1,ii] = 1e-15 * infections[,1,ii];
+    for (jj in 2:stanData$N2){
+      for(kk in 1:(jj-1)){
+        deaths[,jj,ii] <- deaths[,jj,ii] + infections[,kk,ii] * 
+          stanData$f[jj-kk,ii] * stanOut$ifr_noise[,ii]
+      }
     }
   }
   
-  return(infections)
-  
+  return(list("infections" = infections, "deaths" = deaths))
 }
 
 # Sort out covariates ----------------------------------------------------
@@ -135,11 +147,19 @@ CountryOutputs <- function(index,country,dates,reported_cases,
   predicted_cases_li2 <- colQuantiles(prediction[,1:N,index], probs=.25)
   predicted_cases_ui2 <- colQuantiles(prediction[,1:N,index], probs=.75)
   
+  cum_predicted_cases <- rowCumsums(prediction[,1:N,index])
+  
   estimated_deaths <- colMeans(estimated.deaths[,1:N,index])
-  estimated_deaths_li <- colQuantiles(estimated.deaths[,1:N,index], probs=.025)
-  estimated_deaths_ui <- colQuantiles(estimated.deaths[,1:N,index], probs=.975)
-  estimated_deaths_li2 <- colQuantiles(estimated.deaths[,1:N,index], probs=.25)
-  estimated_deaths_ui2 <- colQuantiles(estimated.deaths[,1:N,index], probs=.75)
+  estimated_deaths_li <- colQuantiles(estimated.deaths[,1:N,index], 
+    probs=.025)
+  estimated_deaths_ui <- colQuantiles(estimated.deaths[,1:N,index], 
+    probs=.975)
+  estimated_deaths_li2 <- colQuantiles(estimated.deaths[,1:N,index], 
+    probs=.25)
+  estimated_deaths_ui2 <- colQuantiles(estimated.deaths[,1:N,index], 
+    probs=.75)
+  
+  cum_predicted_deaths <- rowCumsums(estimated.deaths[,1:N,index])
   
   rt <- colMeans(out$Rt[,1:N,index])
   rt_li <- colQuantiles(out$Rt[,1:N,index],probs=.025)
@@ -151,9 +171,10 @@ CountryOutputs <- function(index,country,dates,reported_cases,
     "country" = rep(country, length(dates)),
     "reported_cases" = reported_cases[[index]], 
     "reported_cases_c" = cumsum(reported_cases[[index]]), 
-    "predicted_cases_c" = cumsum(predicted_cases),
-    "predicted_min_c" = cumsum(predicted_cases_li),
-    "predicted_max_c" = cumsum(predicted_cases_ui),
+    
+    "predicted_cases_c" = colMeans(cum_predicted_cases),
+    "predicted_min_c" = colQuantiles(cum_predicted_cases, probs=.025),
+    "predicted_max_c" = colQuantiles(cum_predicted_cases, probs=.975),
     "predicted_cases" = predicted_cases,
     "predicted_min" = predicted_cases_li,
     "predicted_max" = predicted_cases_ui,
@@ -161,9 +182,10 @@ CountryOutputs <- function(index,country,dates,reported_cases,
     "predicted_max2" = predicted_cases_ui2,
     "deaths" = deaths_by_country[[index]],
     "deaths_c" = cumsum(deaths_by_country[[index]]),
-    "estimated_deaths_c" =  cumsum(estimated_deaths),
-    "death_min_c" = cumsum(estimated_deaths_li),
-    "death_max_c"= cumsum(estimated_deaths_ui),
+    "estimated_deaths_c" =  colMeans(cum_predicted_deaths),
+    "death_min_c" = colQuantiles(cum_predicted_deaths, probs=.025),
+    "death_max_c"= colQuantiles(cum_predicted_deaths, probs=.975),
+    
     "estimated_deaths" = estimated_deaths,
     "death_min" = estimated_deaths_li,
     "death_max"= estimated_deaths_ui,
@@ -216,28 +238,50 @@ CountryForecastR0 <- function(index,country,dates,forecast,predictionR0) {
   N <- length(dates)
   N2 <- N + forecast
   
-  predicted_cases <- colMeans(predictionR0[,1:N2,index])
-  predicted_cases_li <- colQuantiles(predictionR0[,1:N2,index], 
+  predicted_cases <- colMeans(predictionR0$infections[,1:N2,index])
+  predicted_cases_li <- colQuantiles(predictionR0$infections[,1:N2,index], 
     probs=.025)
-  predicted_cases_ui <- colQuantiles(predictionR0[,1:N2,index], 
+  predicted_cases_ui <- colQuantiles(predictionR0$infections[,1:N2,index], 
     probs=.975)
-  predicted_cases_li2 <- colQuantiles(predictionR0[,1:N2,index], 
+  predicted_cases_li2 <- colQuantiles(predictionR0$infections[,1:N2,index],
     probs=.25)
-  predicted_cases_ui2 <- colQuantiles(predictionR0[,1:N2,index], 
+  predicted_cases_ui2 <- colQuantiles(predictionR0$infections[,1:N2,index],
     probs=.75)
+
+  cum_predicted_cases <- rowCumsums(predictionR0$infections[,1:N2,index])
+  
+  estimated_deaths <- colMeans(predictionR0$deaths[,1:N2,index])
+  estimated_deaths_li <- colQuantiles(predictionR0$deaths[,1:N2,index], 
+    probs=.025)
+  estimated_deaths_ui <- colQuantiles(predictionR0$deaths[,1:N2,index], 
+    probs=.975)
+  estimated_deaths_li2 <- colQuantiles(predictionR0$deaths[,1:N2,index], 
+    probs=.25)
+  estimated_deaths_ui2 <- colQuantiles(predictionR0$deaths[,1:N2,index], 
+    probs=.75)
+  
+  cum_predicted_deaths <- rowCumsums(predictionR0$deaths[,1:N2,index])
   
   times <- as_date(as.character(dates))
   times_forecast <- c(times, times[length(times)] + 1:forecast)
   data_country_R0 <- data.frame("time" = times_forecast,
     "country" = rep(country, length(times_forecast)),
-    "predicted_cases_c" = cumsum(predicted_cases),
-    "predicted_min_c" = cumsum(predicted_cases_li),
-    "predicted_max_c" = cumsum(predicted_cases_ui),
+    "predicted_cases_c" = colMeans(cum_predicted_cases),
+    "predicted_min_c" = colQuantiles(cum_predicted_cases, probs=.025),
+    "predicted_max_c" = colQuantiles(cum_predicted_cases, probs=.975),
     "predicted_cases" = predicted_cases,
     "predicted_min" = predicted_cases_li,
     "predicted_max" = predicted_cases_ui,
     "predicted_min2" = predicted_cases_li2,
-    "predicted_max2" = predicted_cases_ui2)
+    "predicted_max2" = predicted_cases_ui2,
+    "estimated_deaths_c" =  colMeans(cum_predicted_deaths),
+    "death_min_c" = colQuantiles(cum_predicted_deaths, probs=.025),
+    "death_max_c"= colQuantiles(cum_predicted_deaths, probs=.975),
+    "estimated_deaths" = estimated_deaths,
+    "death_min" = estimated_deaths_li,
+    "death_max"= estimated_deaths_ui,
+    "death_min2" = estimated_deaths_li2,
+    "death_max2"= estimated_deaths_ui2)
   
   return(data_country_R0)
   
@@ -328,9 +372,8 @@ make_plots <- function(data_country, covariates_country_long,
   levels(data_rt$key) <- c("ninetyfive", "fifth")
   
   p3 <- ggplot(data_country) +
-    geom_stepribbon(data = data_rt, aes(x = time, ymin = rt_min, ymax = rt_max, 
-      group = key,
-      fill = key)) +
+    geom_stepribbon(data = data_rt, aes(x = time, ymin = rt_min, 
+      ymax = rt_max, group = key, fill = key)) +
     geom_hline(yintercept = 1, color = 'black', size = 0.1) + 
     geom_segment(data = covariates_country_long,
       aes(x = value, y = 0, xend = value, yend = max(x)), 
@@ -354,9 +397,11 @@ make_plots <- function(data_country, covariates_country_long,
     theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
     theme(legend.position="right")
   
-  p <- plot_grid(p1, p2, p3, ncol = 3, rel_widths = c(1, 1, 2))
-  save_plot(filename = paste0(figuresDir, country, "_three_panel_", 
-    filename2, ".png"), p, base_width = 14)
+  top_row <- plot_grid(p1, p2, labels = c("A", "B"))
+  p <- plot_grid(top_row, p3, labels = c("", "C"), ncol = 1)
+  # p <- plot_grid(p1, p2, p3, ncol = 3, rel_widths = c(1, 1, 2))
+  ggsave(filename = paste0(figuresDir, country, "_three_panel_", 
+    filename2, ".png"), p, width = 7, height = 7)
 }
 
 make_single_plot <- function(data_country, data_country_forecast, filename,
@@ -413,63 +458,94 @@ make_single_plot <- function(data_country, data_country_forecast, filename,
   print(p)
   
   ggsave(file= paste0(figuresDir, country, "_forecast_", filename, ".png"), 
-    p, width = 10)
+    p, width = 7, height = 3.5)
 }
 
 make_comparison_plot <- function(data_country, data_country_forecast, 
-  data_country_R0, filename2, figuresDir, country, 
-  logy = TRUE, ymax = 10e6, include_cases = TRUE) {
+  data_country_R0, indicator, filename2, figuresDir, country, logy = TRUE, 
+  ymax = 10e6, include_cases = TRUE) {
   
   # Remove first zero entry
   data_country_R0[1,2:ncol(data_country_R0)] <- 
     data_country_R0[2,2:ncol(data_country_R0)]
   
-  p <- ggplot(data_country) +
-    geom_ribbon(data = data_country, aes(x = time, ymin = predicted_min, 
-      ymax = predicted_max), fill = "deepskyblue4", alpha=0.35) +
-    geom_line(data = data_country, aes(x = time, y = predicted_cases), 
-      col = "deepskyblue4") + 
-    geom_ribbon(data = data_country_forecast, aes(x = time, 
-      ymin = predicted_min_forecast, ymax = predicted_max_forecast), 
+  fileTag <- paste0("_", indicator)
+  
+  p <- ggplot(data_country)
+  
+  if (indicator == "infections") {
+    p <- p + geom_ribbon(data = data_country, 
+      aes(x = time, ymin = predicted_min, ymax = predicted_max), 
       fill = "deepskyblue4", alpha=0.35) +
-    geom_line(data = data_country_forecast, aes(x = time, 
-      y = predicted_cases_forecast), col = "deepskyblue4") + 
-    geom_ribbon(data = data_country_R0, aes(x = time, 
-      ymin = predicted_min, ymax = predicted_max), 
-      fill = "black", alpha=0.35) +
-    geom_line(data = data_country_R0, aes(x = time, 
-      y = predicted_cases), col = "black") +
-    geom_vline(xintercept = data_country$time[length(data_country$time)], 
-      col = "black", linetype = "dashed", alpha = 0.5) + 
-    xlab("Date") +
-    ylab("Daily number of infectons\n") + 
+      geom_line(data = data_country, aes(x = time, y = predicted_cases), 
+        col = "deepskyblue4") + 
+      geom_ribbon(data = data_country_forecast, aes(x = time, 
+        ymin = predicted_min_forecast, ymax = predicted_max_forecast), 
+        fill = "deepskyblue4", alpha=0.35) +
+      geom_line(data = data_country_forecast, aes(x = time, 
+        y = predicted_cases_forecast), col = "deepskyblue4") + 
+      geom_ribbon(data = data_country_R0, aes(x = time, 
+        ymin = predicted_min, ymax = predicted_max), 
+        fill = "black", alpha=0.35) +
+      geom_line(data = data_country_R0, aes(x = time, 
+        y = predicted_cases), col = "black") +
+      ylab("Daily number of infectons\n")
+  } else {
+    # Deaths
+    p <- p + 
+      geom_ribbon(data = data_country, 
+        aes(x = time, ymin = death_min, ymax = death_max), 
+        fill = "deepskyblue4", alpha=0.35) +
+      geom_line(data = data_country, 
+        aes(x = time, y = estimated_deaths), 
+        col = "deepskyblue4") + 
+      geom_ribbon(data = data_country_forecast, 
+        aes(x = time, ymin = death_min_forecast, ymax = death_max_forecast), 
+        fill = "deepskyblue4", alpha=0.35) +
+      geom_line(data = data_country_forecast, 
+        aes(x = time, y = estimated_deaths_forecast), 
+        col = "deepskyblue4") + 
+      geom_ribbon(data = data_country_R0, 
+        aes(x = time, ymin = death_min, ymax = death_max), 
+        fill = "black", alpha=0.35) +
+      geom_line(data = data_country_R0, 
+        aes(x = time, y = estimated_deaths), col = "black") +
+      ylab("Daily number of deaths\n")
+  }
+  
+  p <- p +  geom_vline(xintercept = 
+      data_country$time[length(data_country$time)], 
+    col = "black", linetype = "dashed", alpha = 0.5) + 
+    xlab("Date") + 
     scale_x_date(date_breaks = "weeks", labels = date_format("%e %b")) + 
     theme_pubr(base_family="sans") + 
-    theme(axis.text.x = element_text(angle = 45, hjust = 1)) # +
-  # guides(fill=guide_legend(ncol=1, reverse = TRUE)) + 
-  # annotate(geom="text", x=data_country$time[length(data_country$time)]+11,
-  # y=10000, label="",
-  # color="black")
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
   if (include_cases) {
-    p <- p + geom_bar(data = data_country, aes(x = time, y = reported_cases), 
-      fill = "coral4", stat='identity', alpha=0.5)
+    if (indicator == "infections") {
+      p <- p + geom_bar(data = data_country, aes(x = time, 
+        y = reported_cases), 
+        fill = "coral4", stat='identity', alpha=0.5)
+    } else {
+      p <- p + geom_bar(data = data_country, aes(x = time, 
+        y = deaths), 
+        fill = "coral4", stat='identity', alpha=0.5)
+    }
   }
   
   if (logy) {
     p <- p + scale_y_continuous(trans='log10', labels=comma) +
       coord_cartesian(ylim = c(1, ymax), expand = FALSE)
-    fileTag <- "_R0_log_"
+    fileTag <- paste0(fileTag, "_R0_log_")
   } else {
     p <- p + scale_y_continuous(labels=comma) +
       coord_cartesian(ylim = c(0, ymax), expand = TRUE)
-    fileTag <- "_R0_linear_"
+    fileTag <- paste0(fileTag, "_R0_linear_")
   }
   
   print(p)
   
   ggsave(file= paste0(figuresDir, country, fileTag, filename, ".png"), 
-    p, width = 10)
-  
+    p, width = 5, height = 3.5)
 }
 
 
@@ -528,13 +604,15 @@ plot_covariate_effects <- function(resultsDir, out) {
     levels=plot_labels[order(plot_labels)[6:1]])
   # data = data[order(-data$m),]
   p = ggplot(data) +theme_pubr() +  
-    geom_point(aes(x=m,y=parameter,colour=type),position = position_dodge(-.5)) + 
+    geom_point(aes(x=m,y=parameter,colour=type),
+      position = position_dodge(-.5)) + 
     geom_linerange(aes(xmin=ll,xmax=hh,y=parameter,colour=type),
       position = position_dodge(-.5)) + 
     scale_x_continuous(breaks=seq(0,1,.25),
       labels = c("0%\n(no effect on transmissibility)",
         "25%","50%","75%","100%\n(ends transmissibility)"),
-      expand=c(0.005,0.005),expression(paste("Relative % reduction in  ",R[t])))  +
+      expand=c(0.005,0.005),expression(paste("Relative % reduction in  ",
+        R[t])))  +
     scale_colour_manual(name = "", #labels = c("50%", "95%"),
       values = c(("coral4"), ("seagreen"))) + 
     
