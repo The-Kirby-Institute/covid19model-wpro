@@ -10,7 +10,7 @@ The code used is in the wpro_analysis branch (default) off the forked master bra
 For the analysis we made the following key changes to the model and modelling code:
 
 * We changed the serial interval fit to have a Weibull distribution with mean = 5.5 and sd = 2.9 in line with the generation time distribution reported in [Ferretti et al](https://science.sciencemag.org/content/368/6491/eabb6936). 
-* We changed the prior for $\mu$ to have a mean of 2.7 to be more in-line with meta-analyses of R0 estimates (for example see [here](https://bmcmedicine.biomedcentral.com/articles/10.1186/s12916-020-01597-8)).
+* We changed the prior for `mu` to have a mean of 2.7 to be more in-line with meta-analyses of R0 estimates (for example see [here](https://bmcmedicine.biomedcentral.com/articles/10.1186/s12916-020-01597-8)).
 * We created a separate script to fetch John Hopkins University data as an alternative to ECDC data. ECDC data seems to be lagged by a day for Western Pacific countries. 
 * We created a separate results and figures generation script `wpro-results.r` rather than using the base `wpro.r` script. 
 
@@ -20,7 +20,7 @@ So far we are applying this code to the following countries:
 * Philippines
 * Malaysia
 
-# How to run the code
+## How to run the code
 
 There are two ways to run the code:-
 * Open the rstudio project covid19model.Rproj file in rstudio and run/source wpro.r file
@@ -37,7 +37,7 @@ Different run modes incorporated into the `wpro.r` script: :
 * useJHU set to use data from John Hopkins University rather than the ECDC. ECDC data seems to be a day late for Western Pacific countries. 
 * endDate to specify the end date of data to run the model on. If set to `NULL` then runs to the last date in the fetched data. 
 
-# Results 
+## Results 
 To produce results we have set-up a separate script `wpro-results.r` which needs to be run/sourced after the main script has been run. Note the JOBID needs to be entered manually into the script to produce the results. We store results and figures for different runs by date of data fetching. 
 * The results are stored in two folders results and figures.
 * Results has the stored stan fits and data used for plotting
