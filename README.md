@@ -22,23 +22,24 @@ So far we are applying this code to the following countries:
 
 ## How to run the code
 
-There are two ways to run the code:-
+There are two ways to run the code:
 * Open the rstudio project covid19model.Rproj file in rstudio and run/source wpro.r file
 * To run from the command line please enter the cloned directory and type `Rscript wpro.r base` in terminal
  
 ## Run mode settings 
 Different run modes incorporated into the `wpro.r` script: :
 
-* include_ncd which specifies if the weighted-IFR estimate includes the relative differences in all-cause mortality between the specific country and where the IFR estimates are from (to account for co-morbidities and environmental factors potentially affecting COVID-19 deaths)
-* npi_on to turn on the effect of NPIs
-* fullRun which must always be used if you want to obtain reliable results
-* debug quick run and extra outputs for debugging 
-* model to specify the stan model used
+* include_ncd which specifies if the weighted-IFR estimate includes the relative differences in all-cause mortality between the specific country and where the IFR estimates are from (to account for co-morbidities and environmental factors potentially affecting COVID-19 deaths).
+* npi_on to turn on the effect of NPIs.
+* fullRun which must always be used if you want to obtain reliable results.
+* debug quick run and extra outputs for debugging. 
+* model to specify the stan model used.
 * useJHU set to use data from John Hopkins University rather than the ECDC. ECDC data seems to be a day late for Western Pacific countries. 
 * endDate to specify the end date of data to run the model on. If set to `NULL` then runs to the last date in the fetched data. 
 
 ## Results 
-To produce results we have set-up a separate script `wpro-results.r` which needs to be run/sourced after the main script has been run. Note the JOBID needs to be entered manually into the script to produce the results. We store results and figures for different runs by date of data fetching. 
+To produce results we have written a separate script `wpro-results.r` which needs to be run/sourced after the main `wpro.r` script has been run. Note the JOBID number needs to be entered manually into the script to produce the results. We store results and figures for different runs by last date in the fetched data.
+ 
 * The results are stored in two folders results and figures.
 * Results has the stored stan fits and data used for plotting
 * Figures have the images with daily cases, daily death and Rt for all countries.
