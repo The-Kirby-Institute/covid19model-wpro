@@ -3,14 +3,34 @@
 # covid19model
 Code for modelling estimated deaths and cases for COVID19 from Report 13 published by MRC Centre for Global Infectious Disease Analysis, Imperial College London: [Estimating the number of infections and the impact of nonpharmaceutical interventions on COVID-19 in 11 European countries](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-13-europe-npi-impact/) 
 
+If you are looking for the individual based model used in [Report 9](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-9-impact-of-npis-on-covid-19/), please look [here](https://github.com/mrc-ide/covid-sim)
+
+## Version 4 Release
+
+This is the release related to [report 20](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-20-italy/), where we use mobility data to estimate situation in Italy. All other code is still the same.
+
+To run this code you can directly source the base-italy.r file in rstudio inside the project or from command line after setting the current directory as the repository directory run the following command `Rscript base-italy.r base-italy google interventions '~ -1 + residential + transit + averageMobility' '~ -1 + residential + transit + averageMobility'`
+
+The code for scenarios runs only in full mode not in short run or debug mode. Not running full model to estimate anything is not recommended and discouraged. Only full run should be used to get results.
+
+The instructions for European code are below. This release is specific to [Italy report](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-20-italy/)
+
+
 ## Version 3 Release
 In this update, we first extended our model from version 2 to have 'partial-pooling' for lockdown across all countries. This means now we have a global effect of lockdown along with each country having its own different lockdown effect. We also made our code modular, stan code faster (with help from the community) and now we create CSV outputs too for usage. 
 
 You can directly get csv files [here](https://mrc-ide.github.io/covid19estimates/#/download ) and new model description [here](https://arxiv.org/abs/2004.11342)
 
 ## Notice
- * Python code is right now not updated and won't work. Python code is good for only version 1 model and data.
- * base_general.r and base_general.stan, base_general_speed.stan and  	base_general_speed2.stan are now valid models for only version2
+ :warning: Python code is right now not updated and won't work. Python code is good for only version 1 model and data.
+ 
+ :warning: base_general.r and base_general.stan, base_general_speed.stan and  	base_general_speed2.stan are now valid models for only version2
+
+:warning: This code is released with no support. We try our best to look at issues and pull request but can't help people with setup most of the time. We have docker images and conda environment file to make it easy for you to get started with the setup, any other approach assumes user can handle their computing environments approriately.
+
+:warning: This model is in active development and so parameter name and behaviours, and output file formats will change without notice.
+
+:warning: As with any mathematical model, it is easy to misconfigure inputs and therefore get meaningless outputs. The development team only endorses outputs it has itself generated.
 
 ## Version 2 Release
 In this update we extend our original [model](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-13-europe-npi-impact/)  to include (a) population saturation effects, (b) prior uncertainty on the infection fatality ratio and (c) a more balanced prior on intervention effects.  We also (d) included another 3 countries (Greece, the Netherlands and Portugal). The updated technical detail is available [here](https://github.com/ImperialCollegeLondon/covid19model/blob/master/Technical_description_of_Imperial_COVID_19_Model.pdf).
@@ -70,5 +90,5 @@ Three different run modes are supported:
 
 # Results 
 * The results are stored in two folders results and figures.
-* Results has the stored stan fits and data used for plotting
+* Results have the stored stan fits and data used for plotting
 * Figures have the images with daily cases, daily death and Rt for all countries.
