@@ -3,7 +3,18 @@ Application of the Imperial College covid19model to countries in the Western Pac
 
 This repository is a fork of the original code used for modelling estimated deaths and cases for COVID19 from Report 13 published by MRC Centre for Global Infectious Disease Analysis, Imperial College London: [Estimating the number of infections and the impact of nonpharmaceutical interventions on COVID-19 in 11 European countries](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-13-europe-npi-impact/) 
 
-The code used is in the wpro_analysis branch (default) off the forked master branch of the Version 3 release. Unnecessary code for our analysis is stored in the `imperial-code/` directory. Please go to the upstream repository to see the original code and for version details and instructions in the associated README.md file. Results for the original model applied to European countries are available [here](https://mrc-ide.github.io/covid19estimates/#/) with the technical model description available [here](https://arxiv.org/abs/2004.11342) and [here](https://github.com/ImperialCollegeLondon/covid19model/blob/master/Technical_description_of_Imperial_COVID_19_Model.pdf)
+The code used is in the wpro_analysis branch (default) off the forked master branch of the Version 4 release. Unnecessary code for our analysis is stored in the `imperial-code/` directory. Please go to the upstream repository to see the original code and for version details and instructions in the associated README.md file. Results for the original model applied to European countries are available [here](https://mrc-ide.github.io/covid19estimates/#/) with the technical model description available [here](https://arxiv.org/abs/2004.11342) and [here](https://github.com/ImperialCollegeLondon/covid19model/blob/master/Technical_description_of_Imperial_COVID_19_Model.pdf)
+
+
+## Version 4 Release
+
+This is the release related to [report 20](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-20-italy/), where we use mobility data to estimate situation in Italy. All other code is still the same.
+
+To run this code you can directly source the base-italy.r file in rstudio inside the project or from command line after setting the current directory as the repository directory run the following command `Rscript base-italy.r base-italy google interventions '~ -1 + residential + transit + averageMobility' '~ -1 + residential + transit + averageMobility'`
+
+The code for scenarios runs only in full mode not in short run or debug mode. Not running full model to estimate anything is not recommended and discouraged. Only full run should be used to get results.
+
+The instructions for European code are below. This release is specific to [Italy report](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-20-italy/)
 
 ## Changes to upstream code
 
@@ -41,5 +52,5 @@ Different run modes incorporated into the `wpro.r` script: :
 To produce results we have written a separate script `wpro-results.r` which needs to be run/sourced after the main `wpro.r` script has been run. Note the JOBID number needs to be entered manually into the script to produce the results. We store results and figures for different runs by last date in the fetched data.
  
 * The results are stored in two folders results and figures.
-* Results has the stored stan fits and data used for plotting
+* Results have the stored stan fits and data used for plotting
 * Figures have the images with daily cases, daily death and Rt for all countries.
