@@ -489,7 +489,7 @@ make_comparison_plot <- function(data_country, data_country_forecast,
         fill = "black", alpha=0.35) +
       geom_line(data = data_country_R0, aes(x = time, 
         y = predicted_cases), col = "black") +
-      ylab("Daily number of infectons\n")
+      ylab("Daily number of infectons\n(millions)")
   } else {
     # Deaths
     p <- p + 
@@ -533,12 +533,15 @@ make_comparison_plot <- function(data_country, data_country_forecast,
   }
   
   if (logy) {
-    p <- p + scale_y_continuous(trans='log10', labels=comma) +
+    p <- p + scale_y_continuous(trans='log10', labels = comma_format(
+      accuracy = 1)) +
       coord_cartesian(ylim = c(1, ymax), expand = FALSE)
     fileTag <- paste0(fileTag, "_R0_log_")
   } else {
-    p <- p + scale_y_continuous(labels=comma) +
-      coord_cartesian(ylim = c(0, ymax), expand = TRUE)
+    p <- p + scale_y_continuous(labels = unit_format(unit = "M", 
+      scale = 1e-6, accuracy = 0.1)) +
+      # scale_y_continuous(labels = unit_format(unit = "M", scale = 1e+6))
+      coord_cartesian(ylim = c(0, ymax), expand = TRUE) 
     fileTag <- paste0(fileTag, "_R0_linear_")
   }
   
