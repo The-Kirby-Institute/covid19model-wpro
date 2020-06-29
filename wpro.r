@@ -24,7 +24,7 @@ source('utils/process-covariates.r')
 # User Options ------------------------------------------------------------
 options <- list("include_ncd" = TRUE,
   "npi_on" = TRUE,
-  "fullRun" = FALSE,
+  "fullRun" = TRUE,
   "debug" = FALSE,
   "model" = "base_wpro",
   "useJHU" = TRUE,
@@ -81,7 +81,9 @@ figuresDir <- paste0("figures/DateRep-",dateResults, "/")
 dir.create(resultsDir, showWarnings = FALSE, recursive = TRUE)
 dir.create(figuresDir, showWarnings = FALSE, recursive = TRUE)
 
-N2 = 100 # increase if you need more forecast
+forecast <- 7 # increase to get correct number of days to simulate
+# Maximum number of days to simulate
+N2 <- (max(d$DateRep) - min(d$DateRep) + 1 + forecast)[[1]]
 
 # Initialize inputs ------------------------------------------------------
 processed_data <- process_covariates(countries = countries, 

@@ -3,8 +3,8 @@
 source("utils/extract-results.r")
 
 ##JOBIDs
-dateDir <- "2020-05-07"
-JOBID <- "171055"
+dateDir <- "2020-05-11"
+JOBID <- "1103566"
 StanModel <- "base_wpro"
 # Load files and results
 resultsDir <- paste0("results/DateRep-", dateDir, "/")
