@@ -63,6 +63,32 @@ Italy/results/*.png
 Italy/figures/*.png
 Italy/figures/*.pdf
 Italy/results/*.RDS
+Brazil/code/stan-models/*.rds
+Brazil/results/*.Rdata
+Brazil/results/*.pdf
+Brazil/results/*.png
+Brazil/figures/*.png
+Brazil/figures/*.pdf
+Brazil/figures/*.txt
+Brazil/results/*.RDS
+usa/code/stan-models/*.rds
+usa/results/*.Rdata
+usa/results/*.pdf
+usa/results/*.png
+usa/figures/*.png
+usa/figures/*.pdf
+usa/results/*.RDS
+usa/figures/*.csv
+usa/results/*.csv
+nature/stan-models/*.rds
+nature/results/*.Rdata
+nature/results/*.pdf
+nature/results/*.png
+nature/figures/*.png
+nature/figures/*.pdf
+nature/results/*.RDS
+nature/figures/*.csv
+nature/results/*.csv
 
 
 
