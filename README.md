@@ -3,51 +3,7 @@ Application of the Imperial College covid19model to countries in the Western Pac
 
 This repository is a fork of the original code used for  modelling estimated deaths and infections for COVID-19 from ["Estimating the effects of non-pharmaceutical interventions on COVID-19 in Europe"](https://www.nature.com/articles/s41586-020-2405-7), Flaxman, Mishra, Gandy et al, Nature, 2020, the published version of the original Report 13 published by MRC Centre for Global Infectious Disease Analysis, Imperial College London: [Estimating the number of infections and the impact of nonpharmaceutical interventions on COVID-19 in 11 European countries](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-13-europe-npi-impact/) 
 
-The code used is in the wpro_analysis branch (default) off the forked master branch of the Version 4 release. Unnecessary code for our analysis is stored in the `imperial-code/` directory. Please go to the upstream repository to see the original code and for version details and instructions in the associated README.md file. Results for the original model applied to European countries are available [here](https://mrc-ide.github.io/covid19estimates/#/) with the technical model description available [here](https://arxiv.org/abs/2004.11342) and [here](https://github.com/ImperialCollegeLondon/covid19model/blob/master/Technical_description_of_Imperial_COVID_19_Model.pdf)
-
-## Version 7 Release [![DOI](https://zenodo.org/badge/250386901.svg)](https://zenodo.org/badge/latestdoi/250386901)
-
-This code is the exact code that was used in Flaxman, Mishra, Gandy et al. "Estimating the effects of non-pharmaceutical interventions on COVID-19 in Europe," Nature, 2020. [https://www.nature.com/articles/s41586-020-2405-7](https://www.nature.com/articles/s41586-020-2405-7)
-
-To run the code from the main folder in Rstudio ``source("base-nature.r")`` or from the command line ``Rscript base-nature.r``.
-
-The code should be run in full mode to obtain results---debug mode is only to check that your environment has the required libraries; results will not be reliable as the MCMC chains will not have converged.
-
-The repository with posterior draws of the model in Flaxman, Mishra, Gandy et al. "Estimating the effects of non-pharmaceutical interventions on COVID-19 in Europe," Nature, 2020. [https://www.nature.com/articles/s41586-020-2405-7](https://www.nature.com/articles/s41586-020-2405-7) is [here](https://github.com/ImperialCollegeLondon/covid19modelnaturedraws).
-
-This code doesn't supersede our earlier model, it is here for everyone to have direct access to code used in Flaxman, Mishra, Gandy et al. "Estimating the effects of non-pharmaceutical interventions on COVID-19 in Europe," Nature, 2020.[https://www.nature.com/articles/s41586-020-2405-7](https://www.nature.com/articles/s41586-020-2405-7).
-
-The instructions for European, Italy, Brazil, and USA code are the same as earlier (Look at version 3, version 4, version 5, version 6).
-
-## Version 6 Release
-
-This is the release related to [report 23](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-23-united-states/), where we use mobility data to estimate situation in all states of the USA. All other code is still the same.
-
-To run this code you can directly run the base-usa.r file or from command line after seting the current directory as the repository directory run the following command `Rscript base-usa.r`
-
-The code shold be run in full mode to obtain any results. Not running full model to estimate anything is not recommended and discouraged. Only full run should be used to get results.
-
-The instructions for European, Italy and Brazil code are same as earlier (Look at version 3, version 4 and version 5). This release is specific to [USA report](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-23-united-states/)
-
-## Version 5 Release
-
-This is the release related to [report 21](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-21-brazil/), where we use mobility data to estimate situation in Brazil. All other code is still the same.
-
-To run this code you can directly run the base-Brazil.r file or from command line after seting the current directory as the repository directory run the following command `Rscript base-Brazil.r`
-
-The code shold be run in full mode to obtain any results. Not running full model to estimate anything is not recommended and discouraged. Only full run should be used to get results.
-
-The instructions for European and Italy code are same as earlier (Look at version 3 and version 4). This release is specific to [Brazil report](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-21-brazil/)
-
-## Version 4 Release
-
-This is the release related to [report 20](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-20-italy/), where we use mobility data to estimate situation in Italy. All other code is still the same.
-
-To run this code you can directly source the base-italy.r file in rstudio inside the project or from command line after setting the current directory as the repository directory run the following command `Rscript base-italy.r base-italy google interventions '~ -1 + residential + transit + averageMobility' '~ -1 + residential + transit + averageMobility'`
-
-The code for scenarios runs only in full mode not in short run or debug mode. Not running full model to estimate anything is not recommended and discouraged. Only full run should be used to get results.
-
-The instructions for European code are below. This release is specific to [Italy report](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-20-italy/)
+The code used is in the `wpro_analysis` branch (default) off the forked master branch of the Version 4 release. Updated upstream code (to Version 7 release) is stored in the `master` branch with unnecessary code for our analysis is stored in the `imperial-code/` directory. Please go to the upstream repository to see the original code and for version details and instructions in the associated README.md file. Results for the original model applied to European countries are available [here](https://mrc-ide.github.io/covid19estimates/#/) with the technical model description available [here](https://arxiv.org/abs/2004.11342) and [here](https://github.com/ImperialCollegeLondon/covid19model/blob/master/Technical_description_of_Imperial_COVID_19_Model.pdf)
 
 ## Changes to upstream code
 
